@@ -1,5 +1,5 @@
 import { archiveSkill, createCategory, createSkill, linkSkill, removeCategoryIfEmpty, skillExists, unlinkSkill, updateSkill } from "./fs-api.js";
-import { markTodoItemDone } from "./run-artifacts.js";
+import { appendStepLog, markTodoItemDone } from "./run-artifacts.js";
 
 export async function executePlan({ runPath, plan, context, startIndex = 0, state = new Map(), onProgress }) {
   const execution = {
@@ -22,6 +22,14 @@ export async function executePlan({ runPath, plan, context, startIndex = 0, stat
       }
       const result = await executeItem(item, state, context);
       const note = result?.note ?? "done";
+      await appendStepLog(runPath, {
+        timestamp: new Date().toISOString(),
+        index,
+        action: item.action,
+        text: item.text,
+        note,
+        result: serializeExecutionResult(result)
+      });
       await markTodoItemDone(runPath, index, note);
       execution.completedSteps += 1;
 
@@ -58,12 +66,32 @@ export async function executePlan({ runPath, plan, context, startIndex = 0, stat
   return execution;
 }
 
+function serializeExecutionResult(result) {
+  if (!result) {
+    return null;
+  }
+  return {
+    note: result.note ?? null,
+    createdSkill: result.createdSkill ?? null,
+    updatedSkill: result.updatedSkill ?? null,
+    linkedSkill: result.linkedSkill ?? null,
+    archivedSkill: result.archivedSkill ?? null,
+    category: result.category ?? null
+  };
+}
+
 async function executeItem(item, state, context) {
   const data = item.data ?? {};
   switch (item.action) {
     case "create_category":
       await createCategory(context.paths.categories, data.categoryPath);
-      return { note: `created-or-confirmed ${data.categoryPath}` };
+      return {
+        note: `created-or-confirmed ${data.categoryPath}`,
+        category: {
+          path: data.categoryPath,
+          change: "create_or_confirm"
+        }
+      };
     case "review_input":
       return { note: "reviewed heuristically" };
     case "review_skills":
@@ -120,10 +148,22 @@ async function executeItem(item, state, context) {
     }
     case "unlink_skill":
       await unlinkSkill(context.paths.categories, data.skillId, data.categoryPath);
-      return { note: `unlinked ${data.skillId} from ${data.categoryPath}` };
+      return {
+        note: `unlinked ${data.skillId} from ${data.categoryPath}`,
+        category: {
+          path: data.categoryPath,
+          change: "unlink"
+        }
+      };
     case "remove_empty_category": {
       const removed = await removeCategoryIfEmpty(context.paths.categories, data.categoryPath);
-      return { note: removed ? `removed empty category ${data.categoryPath}` : `kept non-empty category ${data.categoryPath}` };
+      return {
+        note: removed ? `removed empty category ${data.categoryPath}` : `kept non-empty category ${data.categoryPath}`,
+        category: {
+          path: data.categoryPath,
+          change: removed ? "removed_empty" : "kept_non_empty"
+        }
+      };
     }
     case "archive_skill":
       if (!(await skillExists(context.paths.skills, data.skillId))) {

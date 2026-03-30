@@ -9,6 +9,7 @@ The current codebase provides:
 - staging ingestion via text or copied files
 - deterministic `update --apply`, `ask`, and `rebuild` starter flows
 - run artifact generation for TODO/review/summary files
+- executed runs now also persist `steps.jsonl`, a per-TODO action log for later diff/commit orchestration
 - run manifests with git environment metadata and parseable TODO items
 - ask runs persisted with `answer.md`, `run.json`, and `summary.json`
 - heuristic ask retrieval over skill summaries plus passage extraction
@@ -75,6 +76,7 @@ Implemented today:
 - resumable runs via `run.json` state tracking and `rrag resume <run_id>`
 - resume now reconstructs staged-to-skill mappings from prior completed TODO items so dependent link steps can continue safely
 - run history inspection with `rrag runs`
+- `rrag runs` now shows completed step counts so execution progress is easier to inspect
 - persisted ask traces and answers under `runs/`
 - git environment discovery for future branch/commit orchestration
 - TODO artifact formatting that is ready for step-by-step execution later

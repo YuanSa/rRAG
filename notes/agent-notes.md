@@ -24,6 +24,7 @@ The implementation is intentionally split into small layers:
 
 - `src/lib/run-artifacts.js`
   Responsible for all run outputs such as `TODO.md`, `review.md`, `summary.json`, and `run.json`.
+  It now also appends `steps.jsonl` so each executed TODO item leaves behind a structured action trace.
 
 - `src/lib/retrieval.js`
   Contains the current deterministic retrieval logic. This is the right place to later add category-level beam search and model-guided passage selection.
@@ -43,6 +44,7 @@ These are the highest-value missing pieces:
 - apply/rebuild do not yet create a branch per run
 - TODO items are not committed one-by-one
 - no PR/MR orchestration exists yet
+- `steps.jsonl` now gives us a stable per-step execution journal that can later feed commit messages and PR summaries
 
 3. Tree-guided retrieval
 - ask now traverses category nodes first and records traversal traces

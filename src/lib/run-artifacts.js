@@ -28,6 +28,12 @@ export async function writeMarkdownArtifact(runPath, filename, content) {
   return artifactPath;
 }
 
+export async function appendStepLog(runPath, entry) {
+  const logPath = path.join(runPath, "steps.jsonl");
+  await writeFile(logPath, `${JSON.stringify(entry)}\n`, { encoding: "utf8", flag: "a" });
+  return logPath;
+}
+
 export async function writeSummary(runPath, summary) {
   const summaryPath = path.join(runPath, "summary.json");
   await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");

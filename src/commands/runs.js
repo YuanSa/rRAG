@@ -15,7 +15,7 @@ export async function handleRuns(args, context) {
 
   for (const run of runs) {
     context.stdout.write(`- ${run.runId}\n`);
-    context.stdout.write(`  mode=${run.mode} state=${run.state} todo_items=${run.todoItems}`);
+    context.stdout.write(`  mode=${run.mode} state=${run.state} todo_items=${run.todoItems} completed=${run.completedSteps}`);
     if (run.plannerMode) {
       context.stdout.write(` planner=${run.plannerMode}`);
     }
