@@ -13,7 +13,11 @@ export async function handleAsk(args, context) {
     categoriesRoot: context.paths.categories,
     maxSkills: context.config.max_full_skill_reads,
     maxPassagesPerSkill: context.config.max_passages_per_skill,
-    llm: context.llm
+    llm: context.llm,
+    maxBranches: context.config.branch_max_per_level,
+    maxDepth: context.config.max_depth,
+    branchMinScore: context.config.branch_min_score,
+    branchScoreMargin: context.config.branch_score_margin
   });
 
   context.stdout.write(`# Ask\n\n`);

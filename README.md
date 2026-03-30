@@ -50,6 +50,9 @@ Relevant config keys:
 - `llm_base_url`
 - `llm_model`
 - `llm_api_key_env`
+- `branch_max_per_level`
+- `branch_min_score`
+- `branch_score_margin`
 
 If the model is disabled or the request fails, the code falls back to deterministic heuristic behavior.
 

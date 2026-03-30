@@ -36,7 +36,18 @@ export async function collectSkillCategoryMap(categoriesRoot) {
   return map;
 }
 
-export async function retrieveRelevantPassages({ question, skillsRoot, categoriesRoot, maxSkills = 5, maxPassagesPerSkill = 3, llm = null }) {
+export async function retrieveRelevantPassages({
+  question,
+  skillsRoot,
+  categoriesRoot,
+  maxSkills = 5,
+  maxPassagesPerSkill = 3,
+  llm = null,
+  maxBranches = 3,
+  maxDepth = 4,
+  branchMinScore = 1,
+  branchScoreMargin = 3
+}) {
   const questionTokens = tokenize(question);
   const traversal = await traverseCategories({
     categoriesRoot,
@@ -44,8 +55,10 @@ export async function retrieveRelevantPassages({ question, skillsRoot, categorie
     question,
     llm,
     questionTokens,
-    maxBranches: 3,
-    maxDepth: 4
+    maxBranches,
+    maxDepth,
+    branchMinScore,
+    branchScoreMargin
   });
   const candidateSkillMap = new Map();
 
@@ -121,7 +134,17 @@ export async function retrieveRelevantPassages({ question, skillsRoot, categorie
   });
 }
 
-export async function traverseCategories({ categoriesRoot, skillsRoot, question, llm, questionTokens, maxBranches = 3, maxDepth = 4 }) {
+export async function traverseCategories({
+  categoriesRoot,
+  skillsRoot,
+  question,
+  llm,
+  questionTokens,
+  maxBranches = 3,
+  maxDepth = 4,
+  branchMinScore = 1,
+  branchScoreMargin = 3
+}) {
   const visited = [];
   const skillMetaCache = new Map();
 
@@ -170,7 +193,9 @@ export async function traverseCategories({ categoriesRoot, skillsRoot, question,
       question,
       parentPath: parts.join("/") || "(root)",
       childCategories,
-      maxBranches
+      maxBranches,
+      minScore: branchMinScore,
+      scoreMargin: branchScoreMargin
     });
     visited[visited.length - 1].selectorMode = branchSelection.mode;
     visited[visited.length - 1].selectedChildren = branchSelection.selected.map(child => child.name);

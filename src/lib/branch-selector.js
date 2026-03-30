@@ -1,5 +1,5 @@
-export async function selectBranchesWithFallback({ llm, question, parentPath, childCategories, maxBranches }) {
-  const heuristic = selectBranchesHeuristic({ childCategories, maxBranches });
+export async function selectBranchesWithFallback({ llm, question, parentPath, childCategories, maxBranches, minScore = 1, scoreMargin = 3 }) {
+  const heuristic = selectBranchesHeuristic({ childCategories, maxBranches, minScore, scoreMargin });
   if (!llm?.configured || childCategories.length === 0) {
     return {
       selected: heuristic,
@@ -14,6 +14,8 @@ export async function selectBranchesWithFallback({ llm, question, parentPath, ch
         question,
         parentPath,
         maxBranches,
+        minScore,
+        scoreMargin,
         candidates: childCategories.map(child => ({
           name: child.name,
           hint: child.hint,
@@ -49,9 +51,17 @@ export async function selectBranchesWithFallback({ llm, question, parentPath, ch
   }
 }
 
-export function selectBranchesHeuristic({ childCategories, maxBranches }) {
-  return childCategories
-    .filter(child => child.score > 0)
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+export function selectBranchesHeuristic({ childCategories, maxBranches, minScore = 1, scoreMargin = 3 }) {
+  const ranked = childCategories
+    .filter(child => child.score >= minScore)
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
+  if (ranked.length === 0) {
+    return [];
+  }
+
+  const bestScore = ranked[0].score;
+  return ranked
+    .filter(child => child.score >= Math.max(minScore, bestScore - scoreMargin))
     .slice(0, maxBranches);
 }
