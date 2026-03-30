@@ -19,7 +19,9 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         createdAt: run.created_at ?? "",
         plannerMode: run.planner?.mode ?? "",
         selectorModes: collectSelectorModes(run),
-        todoItems: run.counts?.todo_items ?? 0
+        todoItems: run.counts?.todo_items ?? 0,
+        question: run.question ?? "",
+        resultCount: run.result_count ?? 0
       });
     } catch {
       runs.push({
@@ -29,7 +31,9 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         createdAt: "",
         plannerMode: "",
         selectorModes: [],
-        todoItems: 0
+        todoItems: 0,
+        question: "",
+        resultCount: 0
       });
     }
   }

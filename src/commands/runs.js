@@ -23,5 +23,15 @@ export async function handleRuns(args, context) {
       context.stdout.write(` selector=${run.selectorModes.join(",")}`);
     }
     context.stdout.write(`\n`);
+    if (run.mode === "ask" && run.question) {
+      context.stdout.write(`  question=${truncate(run.question, 100)} results=${run.resultCount}\n`);
+    }
   }
+}
+
+function truncate(text, maxLength) {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength - 3)}...`;
 }
