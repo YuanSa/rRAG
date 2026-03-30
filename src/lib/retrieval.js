@@ -99,14 +99,23 @@ export async function retrieveRelevantPassages({ question, skillsRoot, categorie
     if (passages.length === 0 && candidate.score < 4) {
       continue;
     }
+    const bestPassageScore = passages[0]?.score ?? 0;
     results.push({
       ...candidate,
+      bestPassageScore,
       passages,
       traversal
     });
   }
 
-  return results;
+  const bestOverallScore = Math.max(...results.map(result => result.bestPassageScore || result.score), 0);
+  return results.filter(result => {
+    const combinedScore = result.bestPassageScore || result.score;
+    if (bestOverallScore <= 4) {
+      return combinedScore > 0;
+    }
+    return combinedScore >= Math.max(3, bestOverallScore - 4);
+  });
 }
 
 export async function traverseCategories({ categoriesRoot, skillsRoot, questionTokens, maxBranches = 3, maxDepth = 4 }) {
