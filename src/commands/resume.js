@@ -1,5 +1,5 @@
 import { executePlan } from "../lib/executor.js";
-import { findFirstPendingTodoIndex, readPlan, readRunManifest, readSummary, readTodo, updateRunManifest, writeSummary } from "../lib/run-artifacts.js";
+import { findFirstPendingTodoIndex, readPlan, readRunManifest, readSummary, readTodo, updateRunManifest, writeChangesSummary, writeSummary } from "../lib/run-artifacts.js";
 import { validateRepo } from "../lib/fs-api.js";
 import { buildResumeState } from "../lib/resume-state.js";
 
@@ -59,6 +59,12 @@ export async function handleResume(args, context) {
     },
     plan: await readTodo(runPath),
     execution
+  });
+  await writeChangesSummary(runPath, {
+    mode: manifest.mode ?? "resume",
+    runId,
+    completedSteps: execution.completedSteps,
+    validationOk: validation.ok
   });
   await writeSummary(runPath, {
     ...(existingSummary ?? {}),

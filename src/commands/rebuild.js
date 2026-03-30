@@ -1,4 +1,4 @@
-import { createRunDirectory, createTodoItem, readTodo, updateRunManifest, writePlan, writeReview, writeRunManifest, writeSummary, writeTodo } from "../lib/run-artifacts.js";
+import { createRunDirectory, createTodoItem, readTodo, updateRunManifest, writeChangesSummary, writePlan, writeReview, writeRunManifest, writeSummary, writeTodo } from "../lib/run-artifacts.js";
 import { collectSkillSummaries } from "../lib/skill-discovery.js";
 import { getCurrentBranch, getGitStatus, getHeadCommit, isGitRepo } from "../lib/git.js";
 import { collectCategoryLinks } from "../lib/retrieval.js";
@@ -65,6 +65,12 @@ export async function handleRebuild(args, context) {
     plan: await readTodo(runPath),
     execution,
     validation
+  });
+  await writeChangesSummary(runPath, {
+    mode: "rebuild",
+    runId,
+    completedSteps: execution?.completedSteps ?? 0,
+    validationOk: validation.ok
   });
   await writeReview(
     runPath,
