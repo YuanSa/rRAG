@@ -11,6 +11,7 @@ The current codebase provides:
 - run artifact generation for TODO/review/summary files
 - run manifests with git environment metadata and parseable TODO items
 - heuristic ask retrieval over skill summaries plus passage extraction
+- heuristic category-guided traversal before skill passage extraction
 - heuristic update planning that can create or update skills and add category links
 - soft-delete via archiving skills out of the active knowledge base
 - optional OpenAI-compatible LLM integration for planning, review, and grounded answer synthesis
@@ -70,6 +71,8 @@ Implemented today:
 - TODO artifact formatting that is ready for step-by-step execution later
 - heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills
 - deterministic skill retrieval from title/summary plus extracted matching passages
+- category-guided traversal traces during ask
+- heuristic branch selection over category nodes before skill matching
 - rebuild planning with conservative cleanup suggestions and executable safe actions
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection

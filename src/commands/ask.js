@@ -25,9 +25,18 @@ export async function handleAsk(args, context) {
   }
 
   const answer = await synthesizeGroundedAnswer({ question, results, llm: context.llm });
+  const traversal = results[0]?.traversal;
 
   context.stdout.write(`Matched skills: ${results.length}\n\n`);
   context.stdout.write(`Answer: ${answer}\n\n`);
+  if (traversal?.visited?.length) {
+    context.stdout.write("Traversal:\n");
+    for (const node of traversal.visited) {
+      const label = node.path || "(root)";
+      context.stdout.write(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}]\n`);
+    }
+    context.stdout.write("\n");
+  }
   for (const result of results) {
     context.stdout.write(`## ${result.title}\n`);
     context.stdout.write(`- skill_id: ${result.skillId}\n`);

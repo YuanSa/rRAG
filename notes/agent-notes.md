@@ -41,8 +41,8 @@ These are the highest-value missing pieces:
 - no PR/MR orchestration exists yet
 
 3. Tree-guided retrieval
-- ask currently ranks by summary/category token overlap
-- it does not yet do true category-by-category reasoning or branching
+- ask now traverses category nodes first and records traversal traces
+- branch selection is still heuristic rather than model-guided
 
 4. Better skill evolution
 - updates currently append a new section
