@@ -83,6 +83,7 @@ Implemented today:
 - heuristic nested category path inference such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`
 - pluggable branch selector with optional LLM-assisted branch choice
 - rebuild planning with conservative cleanup suggestions and executable safe actions
+- unlink operations now prune empty category directories so taxonomy cleanup leaves fewer empty shells
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection
 - ask output now distinguishes real linked category paths from traversal paths used during retrieval

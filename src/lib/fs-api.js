@@ -78,6 +78,7 @@ export async function unlinkSkill(categoriesRoot, skillId, categoryPath) {
   const linkPath = path.join(categoriesRoot, categoryPath, skillId);
   try {
     await unlink(linkPath);
+    await pruneEmptyCategoryDirs(categoriesRoot, path.join(categoriesRoot, categoryPath));
   } catch (error) {
     if (error && error.code !== "ENOENT") {
       throw error;
@@ -107,4 +108,17 @@ export async function validateRepo(repoPaths) {
     ok: checks.every(check => check.ok),
     checks
   };
+}
+
+async function pruneEmptyCategoryDirs(categoriesRoot, startPath) {
+  let currentPath = startPath;
+
+  while (currentPath.startsWith(categoriesRoot) && currentPath !== categoriesRoot) {
+    const entries = await readdir(currentPath, { withFileTypes: true });
+    if (entries.length > 0) {
+      break;
+    }
+    await rm(currentPath, { recursive: false, force: false });
+    currentPath = path.dirname(currentPath);
+  }
 }

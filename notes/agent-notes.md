@@ -19,6 +19,7 @@ The implementation is intentionally split into small layers:
 
 - `src/lib/executor.js`
   Generic safe-action executor. This keeps execution separate from planning so the planner can later become LLM-backed without rewriting file operations.
+  Unlink-driven cleanup is now a bit smarter because empty category directories are pruned after link removal.
 
 - `src/lib/run-artifacts.js`
   Responsible for all run outputs such as `TODO.md`, `review.md`, `summary.json`, and `run.json`.
