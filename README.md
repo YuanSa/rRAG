@@ -23,6 +23,7 @@ node ./bin/rrag.js update --file ./some-docs
 node ./bin/rrag.js update --apply
 node ./bin/rrag.js ask "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
+node ./bin/rrag.js status
 ```
 
 ## Current Status
@@ -36,12 +37,14 @@ Implemented today:
 - staging text ingestion
 - filtered file copying into staging
 - run artifact generation
+- structured `plan.json` artifacts alongside human-readable `TODO.md`
 - git environment discovery for future branch/commit orchestration
 - TODO artifact formatting that is ready for step-by-step execution later
 - heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills
 - deterministic skill retrieval from title/summary plus extracted matching passages
 - rebuild planning with conservative cleanup suggestions and executable safe actions
 - delete command that archives a skill and removes its category links
+- status command for quick repository introspection
 
 Still placeholder:
 

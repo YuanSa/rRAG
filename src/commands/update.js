@@ -5,6 +5,7 @@ import {
   createRunDirectory,
   writeReview,
   writeRunManifest,
+  writePlan,
   writeSummary,
   writeTodo
 } from "../lib/run-artifacts.js";
@@ -65,6 +66,7 @@ async function applyUpdate(context) {
   const reviewText = buildUpdateReview({ stagedTexts, skillSummaries, stagedDecisions });
 
   await writeTodo(runPath, plan);
+  await writePlan(runPath, plan);
   await writeReview(runPath, reviewText);
   const execution = await executePlan({ runPath, plan, context });
   const validation = await validateRepo(context.paths);

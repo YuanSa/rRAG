@@ -2,6 +2,7 @@ import { handleAsk } from "./commands/ask.js";
 import { handleConfig } from "./commands/config.js";
 import { handleDelete } from "./commands/delete.js";
 import { handleRebuild } from "./commands/rebuild.js";
+import { handleStatus } from "./commands/status.js";
 import { handleUpdate } from "./commands/update.js";
 import { formatHelp } from "./lib/help.js";
 import { createRepoContext } from "./lib/repo.js";
@@ -31,6 +32,9 @@ export async function runCli(argv, options = {}) {
       return;
     case "delete":
       await handleDelete(rest, context);
+      return;
+    case "status":
+      await handleStatus(rest, context);
       return;
     case "config":
       await handleConfig(rest, context);

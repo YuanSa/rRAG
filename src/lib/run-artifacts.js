@@ -34,6 +34,12 @@ export async function writeRunManifest(runPath, manifest) {
   return manifestPath;
 }
 
+export async function writePlan(runPath, plan) {
+  const planPath = path.join(runPath, "plan.json");
+  await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
+  return planPath;
+}
+
 export async function readTodo(runPath) {
   const todoPath = path.join(runPath, "TODO.md");
   const content = await readFile(todoPath, "utf8");
