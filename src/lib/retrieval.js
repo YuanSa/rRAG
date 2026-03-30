@@ -49,6 +49,7 @@ export async function retrieveRelevantPassages({
   branchScoreMargin = 3
 }) {
   const questionTokens = tokenize(question);
+  const skillCategoryMap = await collectSkillCategoryMap(categoriesRoot);
   const traversal = await traverseCategories({
     categoriesRoot,
     skillsRoot,
@@ -66,9 +67,9 @@ export async function retrieveRelevantPassages({
     for (const skillId of node.skillIds) {
       const existing = candidateSkillMap.get(skillId) ?? {
         skillId,
-        categoryPaths: []
+        traversalPaths: []
       };
-      existing.categoryPaths.push(node.path || "(root)");
+      existing.traversalPaths.push(node.path || "(root)");
       candidateSkillMap.set(skillId, existing);
     }
   }
@@ -80,7 +81,7 @@ export async function retrieveRelevantPassages({
       if (score > 0) {
         candidateSkillMap.set(link.skillId, {
           skillId: link.skillId,
-          categoryPaths: [link.categoryPath],
+          traversalPaths: [link.categoryPath],
           fallback: true
         });
       }
@@ -91,14 +92,16 @@ export async function retrieveRelevantPassages({
   for (const candidateBase of candidateSkillMap.values()) {
     const skillId = candidateBase.skillId;
     const meta = await readSkillMeta(skillsRoot, skillId);
-    const categoryPaths = [...new Set(candidateBase.categoryPaths)].filter(Boolean);
-    const summaryText = `${meta.title} ${meta.summary} ${categoryPaths.join(" ")}`;
+    const categoryPaths = [...new Set(skillCategoryMap.get(skillId) ?? [])].filter(Boolean);
+    const traversalPaths = [...new Set(candidateBase.traversalPaths)].filter(Boolean);
+    const summaryText = `${meta.title} ${meta.summary} ${categoryPaths.join(" ")} ${traversalPaths.join(" ")}`;
     const score = scoreText(questionTokens, summaryText);
     candidates.push({
       skillId,
       title: meta.title,
       summary: meta.summary,
       categoryPaths,
+      traversalPaths,
       score
     });
   }

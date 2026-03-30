@@ -16,6 +16,7 @@ The current codebase provides:
 - heuristic update planning that can create or update skills and add category links
 - soft-delete via archiving skills out of the active knowledge base
 - optional OpenAI-compatible LLM integration for planning, review, and grounded answer synthesis
+- taxonomy-aware status reporting with depth, leaf-category, and redundant-link signals
 
 ## Quick Start
 
@@ -83,6 +84,7 @@ Implemented today:
 - rebuild planning with conservative cleanup suggestions and executable safe actions
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection
+- ask output now distinguishes real linked category paths from traversal paths used during retrieval
 - optional model-backed planning and answer synthesis with automatic heuristic fallback
 - resumable execution for planned runs that still have pending TODO items
 

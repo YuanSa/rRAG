@@ -63,6 +63,9 @@ export async function handleAsk(args, context) {
     context.stdout.write(`## ${result.title}\n`);
     context.stdout.write(`- skill_id: ${result.skillId}\n`);
     context.stdout.write(`- categories: ${result.categoryPaths.join(", ") || "(unlinked)"}\n`);
+    if (result.traversalPaths?.length) {
+      context.stdout.write(`- traversal_paths: ${result.traversalPaths.join(", ")}\n`);
+    }
     context.stdout.write(`- summary: ${result.summary}\n`);
     if (result.passages.length === 0) {
       context.stdout.write(`- passages: no high-confidence passage match; summary match only\n\n`);
@@ -101,6 +104,7 @@ async function persistAskRun({ context, question, answer, results, traversal }) 
       skillId: result.skillId,
       title: result.title,
       categories: result.categoryPaths,
+      traversalPaths: result.traversalPaths,
       summary: result.summary,
       bestPassageScore: result.bestPassageScore ?? 0,
       passages: result.passages.map(passage => ({
@@ -150,6 +154,9 @@ function renderAskArtifact({ question, answer, results, traversal }) {
     lines.push(`### ${result.title}`);
     lines.push(`- skill_id: ${result.skillId}`);
     lines.push(`- categories: ${result.categoryPaths.join(", ") || "(unlinked)"}`);
+    if (result.traversalPaths?.length) {
+      lines.push(`- traversal_paths: ${result.traversalPaths.join(", ")}`);
+    }
     lines.push(`- summary: ${result.summary}`);
     if (result.passages.length === 0) {
       lines.push("- passages: none");

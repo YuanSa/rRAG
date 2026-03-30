@@ -25,6 +25,7 @@ The implementation is intentionally split into small layers:
 
 - `src/lib/retrieval.js`
   Contains the current deterministic retrieval logic. This is the right place to later add category-level beam search and model-guided passage selection.
+  It now also keeps actual linked category paths separate from traversal paths so retrieval debugging does not confuse navigation with taxonomy state.
 
 ## Known Gaps
 

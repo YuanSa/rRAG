@@ -6,7 +6,7 @@ import { collectCategoryLinks } from "./retrieval.js";
 export async function collectRepoStatus(paths) {
   const skills = await collectSkillSummaries(paths.skills);
   const links = await collectCategoryLinks(paths.categories);
-  const categories = await collectCategoryPaths(paths.categories);
+  const categories = await collectCategoryStats(paths.categories, links);
   const archivedSkills = await countArchivedSkills(path.join(paths.archive, "skills"));
   const archivedStaging = await countDirectories(paths.archiveStaging);
   const runs = await countDirectories(paths.runs);
@@ -18,7 +18,9 @@ export async function collectRepoStatus(paths) {
     skills: skills.length,
     archivedSkills,
     links: links.length,
-    categories: categories.length,
+    categories: categories.total,
+    taxonomy: categories,
+    redundantAncestorLinks: countRedundantAncestorLinks(links),
     archivedStaging,
     runs,
     runStates,
@@ -29,8 +31,10 @@ export async function collectRepoStatus(paths) {
   };
 }
 
-async function collectCategoryPaths(categoriesRoot) {
+async function collectCategoryStats(categoriesRoot, links) {
   const paths = [];
+  let leafCount = 0;
+  let maxDepth = 0;
 
   async function walk(currentPath, parts) {
     const entries = await readdir(currentPath, { withFileTypes: true });
@@ -39,13 +43,25 @@ async function collectCategoryPaths(categoriesRoot) {
         continue;
       }
       const nextParts = [...parts, entry.name];
-      paths.push(nextParts.join("/"));
-      await walk(path.join(currentPath, entry.name), nextParts);
+      const categoryPath = nextParts.join("/");
+      const categoryFullPath = path.join(currentPath, entry.name);
+      const categoryEntries = await readdir(categoryFullPath, { withFileTypes: true });
+      const hasNestedChildren = categoryEntries.some(candidate => candidate.isDirectory());
+      paths.push(categoryPath);
+      maxDepth = Math.max(maxDepth, nextParts.length);
+      if (!hasNestedChildren) {
+        leafCount += 1;
+      }
+      await walk(categoryFullPath, nextParts);
     }
   }
 
   await walk(categoriesRoot, []);
-  return paths;
+  return {
+    total: paths.length,
+    leafCount,
+    maxDepth
+  };
 }
 
 async function countDirectories(rootPath) {
@@ -203,4 +219,20 @@ function summarizeTopCategories(links) {
 
 async function countArchivedSkills(archiveSkillsRoot) {
   return countDirectories(archiveSkillsRoot);
+}
+
+function countRedundantAncestorLinks(links) {
+  const bySkill = new Map();
+  for (const link of links) {
+    const paths = bySkill.get(link.skillId) ?? [];
+    paths.push(link.categoryPath);
+    bySkill.set(link.skillId, paths);
+  }
+
+  let count = 0;
+  for (const paths of bySkill.values()) {
+    const unique = [...new Set(paths)];
+    count += unique.filter(candidate => unique.some(other => other !== candidate && other.startsWith(`${candidate}/`))).length;
+  }
+  return count;
 }
