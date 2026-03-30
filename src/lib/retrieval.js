@@ -161,11 +161,12 @@ export async function traverseCategories({
       const fullPath = path.join(currentPath, entry.name);
       if (entry.isDirectory()) {
         const subtreeHint = await collectSubtreeHint(fullPath, skillsRoot, skillMetaCache);
+        const branchScore = scoreCategoryNode(questionTokens, entry.name, subtreeHint);
         childCategories.push({
           name: entry.name,
           fullPath,
           hint: subtreeHint,
-          score: scoreText(questionTokens, `${entry.name} ${subtreeHint}`)
+          score: branchScore
         });
       } else if (entry.isSymbolicLink()) {
         skillIds.push(entry.name);
@@ -173,7 +174,7 @@ export async function traverseCategories({
     }
 
     const currentLabel = parts.join(" ");
-    const nodeScore = scoreText(questionTokens, currentLabel);
+    const nodeScore = scoreCategoryNode(questionTokens, currentLabel, "");
     const shouldKeep = parts.length === 0 || nodeScore > 0 || childCategories.some(child => child.score > 0) || skillIds.length > 0;
 
     if (!shouldKeep) {
@@ -296,6 +297,18 @@ function scoreText(questionTokens, text) {
     }
   }
   return score;
+}
+
+function scoreCategoryNode(questionTokens, label, hint) {
+  const labelScore = scoreText(questionTokens, label);
+  const hintScore = scoreText(questionTokens, hint);
+  const uniqueQuestionTokens = [...new Set(questionTokens)];
+  const hintTokens = new Set(tokenize(`${label} ${hint}`));
+  const overlapCount = uniqueQuestionTokens.filter(token => hintTokens.has(token)).length;
+  const coverage = uniqueQuestionTokens.length > 0 ? overlapCount / uniqueQuestionTokens.length : 0;
+  const normalizedHint = Math.min(hintScore, 12);
+  const normalizedLabel = Math.min(labelScore * 2, 10);
+  return Math.round((normalizedLabel + normalizedHint + coverage * 10) * 10) / 10;
 }
 
 function tokenize(text) {

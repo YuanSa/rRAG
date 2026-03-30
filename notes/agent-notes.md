@@ -44,6 +44,7 @@ These are the highest-value missing pieces:
 - ask now traverses category nodes first and records traversal traces
 - branch selection is still heuristic rather than model-guided
 - the branch selector is now isolated, so swapping heuristic selection for model-guided selection no longer requires rewriting traversal
+- category scoring now uses a normalized blend of label match, subtree-hint match, and question-token coverage instead of raw overlap only
 
 4. Better skill evolution
 - updates currently append a new section
