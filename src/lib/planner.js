@@ -3,10 +3,16 @@ import { collectSkillCategoryMap } from "./retrieval.js";
 
 const DEFAULT_CATEGORY = "Imported";
 const CATEGORY_RULES = [
-  { name: "Agents", keywords: ["agent", "agents", "loop", "loops", "planner", "planning", "autonomous"] },
-  { name: "Retrieval", keywords: ["retrieval", "rag", "search", "bfs", "beam", "recall", "passage"] },
-  { name: "Knowledge-Base", keywords: ["knowledge", "skill", "skills", "category", "taxonomy", "classify"] },
-  { name: "Prompting", keywords: ["prompt", "prompts", "instruction", "reasoning"] }
+  { path: "Agents", keywords: ["agent", "agents"] },
+  { path: "Agents/Loops", keywords: ["loop", "loops"] },
+  { path: "Agents/Planning", keywords: ["planner", "planning", "plan", "plans"] },
+  { path: "Retrieval", keywords: ["retrieval", "rag", "recall"] },
+  { path: "Retrieval/Traversal", keywords: ["search", "bfs", "beam", "traversal", "branch"] },
+  { path: "Retrieval/Passages", keywords: ["passage", "passages", "extract", "evidence"] },
+  { path: "Knowledge-Base", keywords: ["knowledge", "skill", "skills"] },
+  { path: "Knowledge-Base/Taxonomy", keywords: ["category", "categories", "taxonomy", "classify", "classification"] },
+  { path: "Knowledge-Base/Maintenance", keywords: ["rebuild", "archive", "delete", "cleanup", "fallback"] },
+  { path: "Prompting", keywords: ["prompt", "prompts", "instruction", "reasoning"] }
 ];
 
 export async function buildUpdatePlan({ stagedTexts, skillSummaries, categoriesRoot, skillsRoot }) {
@@ -269,19 +275,19 @@ function findBestSkillMatch(title, body, skillSummaries) {
 
 function deriveCategories(text) {
   const tokens = tokenize(text);
-  const categories = [];
+  const matched = [];
 
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some(keyword => tokens.includes(keyword))) {
-      categories.push(rule.name);
+      matched.push(rule.path);
     }
   }
 
-  if (categories.length === 0) {
-    categories.push(DEFAULT_CATEGORY);
+  if (matched.length === 0) {
+    matched.push(DEFAULT_CATEGORY);
   }
 
-  return dedupe(categories);
+  return collapseCategoryPaths(matched);
 }
 
 function deriveTitle(staged) {
@@ -354,6 +360,20 @@ function createPlanItem(action, text, data) {
 
 function dedupe(items) {
   return [...new Set(items)];
+}
+
+function collapseCategoryPaths(paths) {
+  const unique = dedupe(paths).sort();
+  const kept = [];
+
+  for (const candidate of unique) {
+    const isCoveredByDeeperPath = unique.some(other => other !== candidate && other.startsWith(`${candidate}/`));
+    if (!isCoveredByDeeperPath) {
+      kept.push(candidate);
+    }
+  }
+
+  return kept.length > 0 ? kept : [DEFAULT_CATEGORY];
 }
 
 function buildPlannerPrompt(stagedTexts, skillSummaries, categoryMap) {

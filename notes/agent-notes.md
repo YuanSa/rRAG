@@ -45,6 +45,7 @@ These are the highest-value missing pieces:
 - branch selection is still heuristic rather than model-guided
 - the branch selector is now isolated, so swapping heuristic selection for model-guided selection no longer requires rewriting traversal
 - category scoring now uses a normalized blend of label match, subtree-hint match, and question-token coverage instead of raw overlap only
+- heuristic planning now emits nested category paths such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`, rather than only flat top-level buckets
 
 4. Better skill evolution
 - updates currently append a new section
@@ -62,7 +63,7 @@ These are the highest-value missing pieces:
 - Add a model abstraction layer for planner, reviewer, and ask synthesizer.
 - Persist a dedicated `plan.json` artifact so plan data survives independent of markdown formatting.
 - Add a repository status command to inspect skills, categories, active links, and archived items.
-- Improve category inference to use nested category paths rather than only top-level buckets.
+- Improve rebuild cleanup rules so ancestor fallback links can be removed when a deeper category path already exists for the same skill.
 
 ### Medium-Term
 

@@ -138,6 +138,17 @@ function buildRebuildPlan(skillSummaries, links) {
         })
       );
     }
+
+    for (const categoryPath of findRedundantAncestorLinks(categories)) {
+      todoItems.push(
+        createTodoItem("unlink_skill", `Remove redundant ancestor link \`${categoryPath}\` from \`${skill.id}\` because a deeper category path exists`, {
+          data: {
+            skillId: skill.id,
+            categoryPath
+          }
+        })
+      );
+    }
   }
 
   const duplicateSummaries = findDuplicateSummaries(skillSummaries);
@@ -165,6 +176,12 @@ function buildReviewNotes(skillSummaries, links) {
   });
   notes.push(`- Skills still only under Imported: ${importedOnly.length}`);
 
+  const redundantAncestorLinks = skillSummaries.reduce((count, skill) => {
+    const categories = links.filter(link => link.skillId === skill.id).map(link => link.categoryPath);
+    return count + findRedundantAncestorLinks(categories).length;
+  }, 0);
+  notes.push(`- Redundant ancestor links detected: ${redundantAncestorLinks}`);
+
   const duplicates = findDuplicateSummaries(skillSummaries);
   notes.push(`- Possible duplicate skill pairs: ${duplicates.length}`);
 
@@ -185,4 +202,9 @@ function findDuplicateSummaries(skillSummaries) {
 
 function normalize(text) {
   return text.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function findRedundantAncestorLinks(categoryPaths) {
+  const unique = [...new Set(categoryPaths.filter(Boolean))];
+  return unique.filter(candidate => unique.some(other => other !== candidate && other.startsWith(`${candidate}/`)));
 }
