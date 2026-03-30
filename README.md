@@ -25,6 +25,7 @@ node ./bin/rrag.js update --apply
 node ./bin/rrag.js ask "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
 node ./bin/rrag.js resume 2026-03-30T16-22-24.637Z
+node ./bin/rrag.js runs
 node ./bin/rrag.js status
 ```
 
@@ -64,6 +65,7 @@ Implemented today:
 - run artifact generation
 - structured `plan.json` artifacts alongside human-readable `TODO.md`
 - resumable runs via `run.json` state tracking and `rrag resume <run_id>`
+- run history inspection with `rrag runs`
 - git environment discovery for future branch/commit orchestration
 - TODO artifact formatting that is ready for step-by-step execution later
 - heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills

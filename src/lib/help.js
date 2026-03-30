@@ -8,6 +8,7 @@ Usage:
   rrag ask "<question>"
   rrag rebuild [--dry-run]
   rrag resume <run_id>
+  rrag runs [limit]
   rrag delete <skill_id>
   rrag status
   rrag config set <key> <value>
