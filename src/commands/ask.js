@@ -12,7 +12,8 @@ export async function handleAsk(args, context) {
     skillsRoot: context.paths.skills,
     categoriesRoot: context.paths.categories,
     maxSkills: context.config.max_full_skill_reads,
-    maxPassagesPerSkill: context.config.max_passages_per_skill
+    maxPassagesPerSkill: context.config.max_passages_per_skill,
+    llm: context.llm
   });
 
   context.stdout.write(`# Ask\n\n`);
@@ -33,7 +34,9 @@ export async function handleAsk(args, context) {
     context.stdout.write("Traversal:\n");
     for (const node of traversal.visited) {
       const label = node.path || "(root)";
-      context.stdout.write(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}]\n`);
+      const selectedChildren = node.selectedChildren?.length ? ` selected=${node.selectedChildren.join(",")}` : "";
+      const selectorMode = node.selectorMode ? ` selector=${node.selectorMode}` : "";
+      context.stdout.write(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selectorMode}${selectedChildren}]\n`);
     }
     context.stdout.write("\n");
   }

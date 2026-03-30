@@ -43,6 +43,7 @@ These are the highest-value missing pieces:
 3. Tree-guided retrieval
 - ask now traverses category nodes first and records traversal traces
 - branch selection is still heuristic rather than model-guided
+- the branch selector is now isolated, so swapping heuristic selection for model-guided selection no longer requires rewriting traversal
 
 4. Better skill evolution
 - updates currently append a new section

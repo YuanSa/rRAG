@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
+import { selectBranchesWithFallback } from "./branch-selector.js";
 import { readSkillContent, readSkillMeta } from "./fs-api.js";
 
 export async function collectCategoryLinks(categoriesRoot) {
@@ -35,11 +36,13 @@ export async function collectSkillCategoryMap(categoriesRoot) {
   return map;
 }
 
-export async function retrieveRelevantPassages({ question, skillsRoot, categoriesRoot, maxSkills = 5, maxPassagesPerSkill = 3 }) {
+export async function retrieveRelevantPassages({ question, skillsRoot, categoriesRoot, maxSkills = 5, maxPassagesPerSkill = 3, llm = null }) {
   const questionTokens = tokenize(question);
   const traversal = await traverseCategories({
     categoriesRoot,
     skillsRoot,
+    question,
+    llm,
     questionTokens,
     maxBranches: 3,
     maxDepth: 4
@@ -118,7 +121,7 @@ export async function retrieveRelevantPassages({ question, skillsRoot, categorie
   });
 }
 
-export async function traverseCategories({ categoriesRoot, skillsRoot, questionTokens, maxBranches = 3, maxDepth = 4 }) {
+export async function traverseCategories({ categoriesRoot, skillsRoot, question, llm, questionTokens, maxBranches = 3, maxDepth = 4 }) {
   const visited = [];
   const skillMetaCache = new Map();
 
@@ -162,10 +165,16 @@ export async function traverseCategories({ categoriesRoot, skillsRoot, questionT
       skillIds
     });
 
-    const nextChildren = childCategories
-      .filter(child => child.score > 0)
-      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
-      .slice(0, maxBranches);
+    const branchSelection = await selectBranchesWithFallback({
+      llm,
+      question,
+      parentPath: parts.join("/") || "(root)",
+      childCategories,
+      maxBranches
+    });
+    visited[visited.length - 1].selectorMode = branchSelection.mode;
+    visited[visited.length - 1].selectedChildren = branchSelection.selected.map(child => child.name);
+    const nextChildren = branchSelection.selected;
 
     for (const child of nextChildren) {
       await walk(child.fullPath, [...parts, child.name], depth + 1);

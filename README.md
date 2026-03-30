@@ -73,6 +73,7 @@ Implemented today:
 - deterministic skill retrieval from title/summary plus extracted matching passages
 - category-guided traversal traces during ask
 - heuristic branch selection over category nodes before skill matching
+- pluggable branch selector with optional LLM-assisted branch choice
 - rebuild planning with conservative cleanup suggestions and executable safe actions
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection
