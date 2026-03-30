@@ -1,5 +1,6 @@
 import { retrieveRelevantPassages } from "../lib/retrieval.js";
 import { synthesizeGroundedAnswer } from "../lib/answer.js";
+import { createRunDirectory, writeMarkdownArtifact, writeRunManifest, writeSummary } from "../lib/run-artifacts.js";
 
 export async function handleAsk(args, context) {
   const question = args.join(" ").trim();
@@ -24,6 +25,13 @@ export async function handleAsk(args, context) {
   context.stdout.write(`Question: ${question}\n`);
 
   if (results.length === 0) {
+    await persistAskRun({
+      context,
+      question,
+      answer: "I don't know.",
+      results,
+      traversal: null
+    });
     context.stdout.write(`\nI don't know.\n`);
     context.stdout.write("No relevant skill summaries or passages were matched by the current heuristic retriever.\n");
     return;
@@ -31,6 +39,13 @@ export async function handleAsk(args, context) {
 
   const answer = await synthesizeGroundedAnswer({ question, results, llm: context.llm });
   const traversal = results[0]?.traversal;
+  await persistAskRun({
+    context,
+    question,
+    answer,
+    results,
+    traversal
+  });
 
   context.stdout.write(`Matched skills: ${results.length}\n\n`);
   context.stdout.write(`Answer: ${answer}\n\n`);
@@ -65,4 +80,88 @@ export async function handleAsk(args, context) {
 
 function oneLine(text) {
   return text.replace(/\s+/g, " ").trim();
+}
+
+async function persistAskRun({ context, question, answer, results, traversal }) {
+  const { runId, runPath } = await createRunDirectory(context.paths.runs);
+  const rendered = renderAskArtifact({ question, answer, results, traversal });
+  await writeMarkdownArtifact(runPath, "answer.md", rendered);
+  await writeRunManifest(runPath, {
+    mode: "ask",
+    run_id: runId,
+    created_at: new Date().toISOString(),
+    question,
+    state: {
+      status: "executed",
+      updated_at: new Date().toISOString()
+    },
+    retrieval: traversal ?? { visited: [] },
+    result_count: results.length,
+    results: results.map(result => ({
+      skillId: result.skillId,
+      title: result.title,
+      categories: result.categoryPaths,
+      summary: result.summary,
+      bestPassageScore: result.bestPassageScore ?? 0,
+      passages: result.passages.map(passage => ({
+        score: passage.score,
+        text: passage.text
+      }))
+    }))
+  });
+  await writeSummary(runPath, {
+    mode: "ask",
+    question,
+    result_count: results.length,
+    answer_preview: answer.slice(0, 200)
+  });
+}
+
+function renderAskArtifact({ question, answer, results, traversal }) {
+  const lines = [
+    "# Ask Run",
+    "",
+    `Question: ${question}`,
+    "",
+    `Answer: ${answer}`,
+    ""
+  ];
+
+  if (traversal?.visited?.length) {
+    lines.push("## Traversal");
+    lines.push("");
+    for (const node of traversal.visited) {
+      const label = node.path || "(root)";
+      const selected = node.selectedChildren?.length ? ` selected=${node.selectedChildren.join(",")}` : "";
+      const selector = node.selectorMode ? ` selector=${node.selectorMode}` : "";
+      lines.push(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selector}${selected}]`);
+    }
+    lines.push("");
+  }
+
+  lines.push("## Results");
+  lines.push("");
+  if (results.length === 0) {
+    lines.push("No matching skills.");
+    return lines.join("\n");
+  }
+
+  for (const result of results) {
+    lines.push(`### ${result.title}`);
+    lines.push(`- skill_id: ${result.skillId}`);
+    lines.push(`- categories: ${result.categoryPaths.join(", ") || "(unlinked)"}`);
+    lines.push(`- summary: ${result.summary}`);
+    if (result.passages.length === 0) {
+      lines.push("- passages: none");
+      lines.push("");
+      continue;
+    }
+    lines.push("- passages:");
+    for (const passage of result.passages) {
+      lines.push(`  - (${passage.score}) ${oneLine(passage.text)}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
 }

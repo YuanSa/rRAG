@@ -10,6 +10,7 @@ The current codebase provides:
 - deterministic `update --apply`, `ask`, and `rebuild` starter flows
 - run artifact generation for TODO/review/summary files
 - run manifests with git environment metadata and parseable TODO items
+- ask runs persisted with `answer.md`, `run.json`, and `summary.json`
 - heuristic ask retrieval over skill summaries plus passage extraction
 - heuristic category-guided traversal before skill passage extraction
 - heuristic update planning that can create or update skills and add category links
@@ -70,6 +71,7 @@ Implemented today:
 - structured `plan.json` artifacts alongside human-readable `TODO.md`
 - resumable runs via `run.json` state tracking and `rrag resume <run_id>`
 - run history inspection with `rrag runs`
+- persisted ask traces and answers under `runs/`
 - git environment discovery for future branch/commit orchestration
 - TODO artifact formatting that is ready for step-by-step execution later
 - heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills

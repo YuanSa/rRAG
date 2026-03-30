@@ -22,6 +22,12 @@ export async function writeReview(runPath, reviewText) {
   return reviewPath;
 }
 
+export async function writeMarkdownArtifact(runPath, filename, content) {
+  const artifactPath = path.join(runPath, filename);
+  await writeFile(artifactPath, `${content.trim()}\n`, "utf8");
+  return artifactPath;
+}
+
 export async function writeSummary(runPath, summary) {
   const summaryPath = path.join(runPath, "summary.json");
   await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
