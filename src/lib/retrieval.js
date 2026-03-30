@@ -153,6 +153,10 @@ export async function traverseCategories({
 }) {
   const visited = [];
   const skillMetaCache = new Map();
+  const subtreeHintCache = new Map();
+  const subtreeSkillIdsCache = new Map();
+  let subtreeHintHits = 0;
+  let subtreeHintMisses = 0;
   let truncated = false;
   let stopReason = "";
 
@@ -173,7 +177,13 @@ export async function traverseCategories({
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       const fullPath = path.join(currentPath, entry.name);
       if (entry.isDirectory()) {
-        const subtreeHint = await collectSubtreeHint(fullPath, skillsRoot, skillMetaCache);
+        const hadCachedHint = subtreeHintCache.has(fullPath);
+        const subtreeHint = await collectSubtreeHint(fullPath, skillsRoot, skillMetaCache, subtreeHintCache, subtreeSkillIdsCache);
+        if (hadCachedHint) {
+          subtreeHintHits += 1;
+        } else {
+          subtreeHintMisses += 1;
+        }
         const branchScore = scoreCategoryNode(questionTokens, entry.name, subtreeHint);
         childCategories.push({
           name: entry.name,
@@ -229,24 +239,34 @@ export async function traverseCategories({
   return {
     visited,
     truncated,
-    stopReason
+    stopReason,
+    cache: {
+      subtreeHintEntries: subtreeHintCache.size,
+      skillMetaEntries: skillMetaCache.size,
+      subtreeHintHits,
+      subtreeHintMisses
+    }
   };
 }
 
-async function collectSubtreeHint(categoryPath, skillsRoot, cache) {
-  const skillIds = await collectSkillIdsUnder(categoryPath);
+async function collectSubtreeHint(categoryPath, skillsRoot, metaCache, hintCache, skillIdsCache) {
+  if (hintCache.has(categoryPath)) {
+    return hintCache.get(categoryPath);
+  }
+
+  const skillIds = await collectSkillIdsUnder(categoryPath, skillIdsCache);
   const hints = [];
 
   for (const skillId of skillIds) {
-    if (!cache.has(skillId)) {
+    if (!metaCache.has(skillId)) {
       try {
         const meta = await readSkillMeta(skillsRoot, skillId);
-        cache.set(skillId, `${meta.title} ${meta.summary}`);
+        metaCache.set(skillId, `${meta.title} ${meta.summary}`);
       } catch {
-        cache.set(skillId, "");
+        metaCache.set(skillId, "");
       }
     }
-    const hint = cache.get(skillId);
+    const hint = metaCache.get(skillId);
     if (hint) {
       hints.push(hint);
     }
@@ -255,10 +275,16 @@ async function collectSubtreeHint(categoryPath, skillsRoot, cache) {
     }
   }
 
-  return hints.join(" ");
+  const joined = hints.join(" ");
+  hintCache.set(categoryPath, joined);
+  return joined;
 }
 
-async function collectSkillIdsUnder(categoryPath) {
+async function collectSkillIdsUnder(categoryPath, cache) {
+  if (cache.has(categoryPath)) {
+    return cache.get(categoryPath);
+  }
+
   const skillIds = [];
 
   async function walk(currentPath) {
@@ -274,7 +300,9 @@ async function collectSkillIdsUnder(categoryPath) {
   }
 
   await walk(categoryPath);
-  return [...new Set(skillIds)];
+  const unique = [...new Set(skillIds)];
+  cache.set(categoryPath, unique);
+  return unique;
 }
 
 export function extractRelevantPassages(content, questionTokens, limit) {

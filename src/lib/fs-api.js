@@ -60,6 +60,25 @@ export async function createCategory(categoriesRoot, categoryPath) {
   await mkdir(path.join(categoriesRoot, categoryPath), { recursive: true });
 }
 
+export async function removeCategoryIfEmpty(categoriesRoot, categoryPath) {
+  const targetPath = path.join(categoriesRoot, categoryPath);
+  let entries;
+  try {
+    entries = await readdir(targetPath, { withFileTypes: true });
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+  if (entries.length > 0) {
+    return false;
+  }
+  await rm(targetPath, { recursive: true, force: false });
+  await pruneEmptyCategoryDirs(categoriesRoot, path.dirname(targetPath));
+  return true;
+}
+
 export async function linkSkill(skillsRoot, categoriesRoot, skillId, categoryPath) {
   const categoryDir = path.join(categoriesRoot, categoryPath);
   await mkdir(categoryDir, { recursive: true });
@@ -118,7 +137,7 @@ async function pruneEmptyCategoryDirs(categoriesRoot, startPath) {
     if (entries.length > 0) {
       break;
     }
-    await rm(currentPath, { recursive: false, force: false });
+    await rm(currentPath, { recursive: true, force: false });
     currentPath = path.dirname(currentPath);
   }
 }

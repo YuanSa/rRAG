@@ -1,4 +1,4 @@
-import { archiveSkill, createCategory, createSkill, linkSkill, skillExists, unlinkSkill, updateSkill } from "./fs-api.js";
+import { archiveSkill, createCategory, createSkill, linkSkill, removeCategoryIfEmpty, skillExists, unlinkSkill, updateSkill } from "./fs-api.js";
 import { markTodoItemDone } from "./run-artifacts.js";
 
 export async function executePlan({ runPath, plan, context, startIndex = 0, state = new Map(), onProgress }) {
@@ -121,6 +121,10 @@ async function executeItem(item, state, context) {
     case "unlink_skill":
       await unlinkSkill(context.paths.categories, data.skillId, data.categoryPath);
       return { note: `unlinked ${data.skillId} from ${data.categoryPath}` };
+    case "remove_empty_category": {
+      const removed = await removeCategoryIfEmpty(context.paths.categories, data.categoryPath);
+      return { note: removed ? `removed empty category ${data.categoryPath}` : `kept non-empty category ${data.categoryPath}` };
+    }
     case "archive_skill":
       if (!(await skillExists(context.paths.skills, data.skillId))) {
         return { note: `already archived ${data.skillId}` };

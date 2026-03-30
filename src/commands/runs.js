@@ -24,7 +24,7 @@ export async function handleRuns(args, context) {
     }
     context.stdout.write(`\n`);
     if (run.mode === "ask" && run.question) {
-      context.stdout.write(`  question=${truncate(run.question, 100)} results=${run.resultCount} visited=${run.visitedNodes} depth=${run.maxDepth}\n`);
+      context.stdout.write(`  question=${truncate(run.question, 100)} results=${run.resultCount} visited=${run.visitedNodes} depth=${run.maxDepth} cache=${run.traversalCacheHits}/${run.traversalCacheMisses}\n`);
     }
   }
 }

@@ -61,6 +61,9 @@ export async function handleAsk(args, context) {
     if (traversal.truncated) {
       context.stdout.write(`- traversal_budget: stopped early (${traversal.stopReason})\n`);
     }
+    if (traversal.cache) {
+      context.stdout.write(`- traversal_cache: subtree_hints=${traversal.cache.subtreeHintEntries} skill_meta=${traversal.cache.skillMetaEntries} hits=${traversal.cache.subtreeHintHits} misses=${traversal.cache.subtreeHintMisses}\n`);
+    }
     context.stdout.write("\n");
   }
   for (const result of results) {
@@ -146,6 +149,9 @@ function renderAskArtifact({ question, answer, results, traversal }) {
     }
     if (traversal.truncated) {
       lines.push(`- traversal_budget: stopped early (${traversal.stopReason})`);
+    }
+    if (traversal.cache) {
+      lines.push(`- traversal_cache: subtree_hints=${traversal.cache.subtreeHintEntries} skill_meta=${traversal.cache.skillMetaEntries} hits=${traversal.cache.subtreeHintHits} misses=${traversal.cache.subtreeHintMisses}`);
     }
     lines.push("");
   }

@@ -153,7 +153,9 @@ async function collectAskRunStats(runsRoot) {
     totalVisitedNodes: 0,
     maxDepthSeen: 0,
     totalResults: 0,
-    truncatedRuns: 0
+    truncatedRuns: 0,
+    totalTraversalCacheHits: 0,
+    totalTraversalCacheMisses: 0
   };
 
   try {
@@ -178,6 +180,8 @@ async function collectAskRunStats(runsRoot) {
         if (parsed?.retrieval?.truncated) {
           stats.truncatedRuns += 1;
         }
+        stats.totalTraversalCacheHits += Number(parsed?.retrieval?.cache?.subtreeHintHits ?? 0);
+        stats.totalTraversalCacheMisses += Number(parsed?.retrieval?.cache?.subtreeHintMisses ?? 0);
       } catch {
         continue;
       }
@@ -193,14 +197,17 @@ async function collectAskRunStats(runsRoot) {
 }
 
 function inferRunStatus(run) {
-  if (run?.state?.status) {
-    return run.state.status;
-  }
   if (run?.execution?.ok === true) {
     return "executed";
   }
   if (run?.execution?.ok === false) {
     return "failed";
+  }
+  if (run?.state?.status === "executing" && Array.isArray(run?.plan) && run.plan.some(item => !item.done)) {
+    return "planned";
+  }
+  if (run?.state?.status) {
+    return run.state.status;
   }
   if (Array.isArray(run?.plan)) {
     const hasPending = run.plan.some(item => !item.done);

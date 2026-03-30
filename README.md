@@ -14,6 +14,7 @@ The current codebase provides:
 - heuristic ask retrieval over skill summaries plus passage extraction
 - heuristic category-guided traversal before skill passage extraction
 - traversal budgeting now respects `max_total_nodes` and records when a search is truncated
+- traversal now caches subtree hints during a run and exposes cache hit/miss signals in ask history
 - heuristic update planning that can create or update skills and add category links
 - soft-delete via archiving skills out of the active knowledge base
 - optional OpenAI-compatible LLM integration for planning, review, and grounded answer synthesis
@@ -83,6 +84,7 @@ Implemented today:
 - heuristic nested category path inference such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`
 - pluggable branch selector with optional LLM-assisted branch choice
 - rebuild planning with conservative cleanup suggestions and executable safe actions
+- rebuild can now propose and execute removal of empty category directories
 - unlink operations now prune empty category directories so taxonomy cleanup leaves fewer empty shells
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection

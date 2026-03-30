@@ -20,6 +20,7 @@ The implementation is intentionally split into small layers:
 - `src/lib/executor.js`
   Generic safe-action executor. This keeps execution separate from planning so the planner can later become LLM-backed without rewriting file operations.
   Unlink-driven cleanup is now a bit smarter because empty category directories are pruned after link removal.
+  Rebuild can also issue `remove_empty_category` actions for empty taxonomy shells that should disappear even without an unlink in the same run.
 
 - `src/lib/run-artifacts.js`
   Responsible for all run outputs such as `TODO.md`, `review.md`, `summary.json`, and `run.json`.
@@ -27,6 +28,7 @@ The implementation is intentionally split into small layers:
 - `src/lib/retrieval.js`
   Contains the current deterministic retrieval logic. This is the right place to later add category-level beam search and model-guided passage selection.
   It now also keeps actual linked category paths separate from traversal paths so retrieval debugging does not confuse navigation with taxonomy state.
+  Subtree hint collection is now cached per traversal so category scoring does not repeatedly rescan the same subtrees within one ask run.
 
 ## Known Gaps
 
@@ -49,6 +51,7 @@ These are the highest-value missing pieces:
 - category scoring now uses a normalized blend of label match, subtree-hint match, and question-token coverage instead of raw overlap only
 - heuristic planning now emits nested category paths such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`, rather than only flat top-level buckets
 - retrieval now enforces `max_total_nodes` as a real traversal budget and records truncation in ask run artifacts and status output
+- ask history and status now surface subtree-hint cache hit/miss signals for traversal debugging
 
 4. Better skill evolution
 - updates currently append a new section

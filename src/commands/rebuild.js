@@ -4,6 +4,8 @@ import { getCurrentBranch, getGitStatus, getHeadCommit, isGitRepo } from "../lib
 import { collectCategoryLinks } from "../lib/retrieval.js";
 import { executePlan } from "../lib/executor.js";
 import { validateRepo } from "../lib/fs-api.js";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 
 export async function handleRebuild(args, context) {
   const dryRun = args.includes("--dry-run");
@@ -13,7 +15,7 @@ export async function handleRebuild(args, context) {
   const gitRepo = await isGitRepo(context.cwd);
   const gitStatus = await getGitStatus(context.cwd);
 
-  const todoItems = buildRebuildPlan(skillSummaries, links);
+  const todoItems = await buildRebuildPlan(skillSummaries, links, context.paths.categories);
 
   await writeTodo(runPath, todoItems);
   await writePlan(runPath, todoItems);
@@ -101,11 +103,12 @@ export async function handleRebuild(args, context) {
   }
 }
 
-function buildRebuildPlan(skillSummaries, links) {
+async function buildRebuildPlan(skillSummaries, links, categoriesRoot) {
   const todoItems = [
     createTodoItem("scan_categories", "Inspect the entire categories tree for duplicate or drifting taxonomy"),
     createTodoItem("scan_skills", `Review classification quality for ${skillSummaries.length} skill summaries`)
   ];
+  const emptyCategories = await collectEmptyCategories(categoriesRoot);
 
   const linkMap = new Map();
   for (const link of links) {
@@ -158,6 +161,16 @@ function buildRebuildPlan(skillSummaries, links) {
     );
   }
 
+  for (const categoryPath of emptyCategories) {
+    todoItems.push(
+      createTodoItem("remove_empty_category", `Remove empty category \`${categoryPath}\``, {
+        data: {
+          categoryPath
+        }
+      })
+    );
+  }
+
   return todoItems;
 }
 
@@ -207,4 +220,25 @@ function normalize(text) {
 function findRedundantAncestorLinks(categoryPaths) {
   const unique = [...new Set(categoryPaths.filter(Boolean))];
   return unique.filter(candidate => unique.some(other => other !== candidate && other.startsWith(`${candidate}/`)));
+}
+
+async function collectEmptyCategories(categoriesRoot) {
+  const empty = [];
+
+  async function walk(currentPath, parts) {
+    const entries = await readdir(currentPath, { withFileTypes: true });
+    const directories = entries.filter(entry => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name));
+    const links = entries.filter(entry => entry.isSymbolicLink());
+
+    for (const entry of directories) {
+      await walk(path.join(currentPath, entry.name), [...parts, entry.name]);
+    }
+
+    if (parts.length > 0 && directories.length === 0 && links.length === 0) {
+      empty.push(parts.join("/"));
+    }
+  }
+
+  await walk(categoriesRoot, []);
+  return empty.sort((a, b) => b.split("/").length - a.split("/").length || a.localeCompare(b));
 }

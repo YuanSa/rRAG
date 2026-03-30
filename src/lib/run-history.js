@@ -15,7 +15,7 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
       runs.push({
         runId,
         mode: run.mode ?? "unknown",
-        state: run.state?.status ?? inferStatus(run),
+        state: inferStatus(run),
         createdAt: run.created_at ?? "",
         plannerMode: run.planner?.mode ?? "",
         selectorModes: collectSelectorModes(run),
@@ -23,7 +23,9 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         question: run.question ?? "",
         resultCount: run.result_count ?? 0,
         visitedNodes: Array.isArray(run?.retrieval?.visited) ? run.retrieval.visited.length : 0,
-        maxDepth: Array.isArray(run?.retrieval?.visited) ? Math.max(...run.retrieval.visited.map(node => node.depth ?? 0), 0) : 0
+        maxDepth: Array.isArray(run?.retrieval?.visited) ? Math.max(...run.retrieval.visited.map(node => node.depth ?? 0), 0) : 0,
+        traversalCacheHits: Number(run?.retrieval?.cache?.subtreeHintHits ?? 0),
+        traversalCacheMisses: Number(run?.retrieval?.cache?.subtreeHintMisses ?? 0)
       });
     } catch {
       runs.push({
@@ -37,7 +39,9 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         question: "",
         resultCount: 0,
         visitedNodes: 0,
-        maxDepth: 0
+        maxDepth: 0,
+        traversalCacheHits: 0,
+        traversalCacheMisses: 0
       });
     }
   }
@@ -63,6 +67,12 @@ function inferStatus(run) {
   }
   if (run?.execution?.ok === false) {
     return "failed";
+  }
+  if (run?.state?.status === "executing" && Array.isArray(run?.plan) && run.plan.some(item => !item.done)) {
+    return "planned";
+  }
+  if (run?.state?.status) {
+    return run.state.status;
   }
   if (Array.isArray(run?.plan) && run.plan.some(item => !item.done)) {
     return "planned";
