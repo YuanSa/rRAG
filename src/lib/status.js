@@ -11,6 +11,7 @@ export async function collectRepoStatus(paths) {
   const archivedStaging = await countDirectories(paths.archiveStaging);
   const runs = await countDirectories(paths.runs);
   const runStates = await collectRunStates(paths.runs);
+  const runModes = await collectRunModes(paths.runs);
 
   return {
     skills: skills.length,
@@ -20,6 +21,7 @@ export async function collectRepoStatus(paths) {
     archivedStaging,
     runs,
     runStates,
+    runModes,
     topCategories: summarizeTopCategories(links),
     unlinkedSkills: skills.filter(skill => !links.some(link => link.skillId === skill.id)).map(skill => skill.id)
   };
@@ -89,6 +91,42 @@ async function collectRunStates(runsRoot) {
   }
 
   return counts;
+}
+
+async function collectRunModes(runsRoot) {
+  const plannerModes = {};
+  const selectorModes = {};
+
+  try {
+    const entries = await readdir(runsRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const runJsonPath = path.join(runsRoot, entry.name, "run.json");
+      try {
+        const raw = await readFile(runJsonPath, "utf8");
+        const parsed = JSON.parse(raw);
+        const planner = parsed?.planner?.mode ?? "unspecified";
+        plannerModes[planner] = (plannerModes[planner] ?? 0) + 1;
+        if (Array.isArray(parsed?.retrieval?.visited)) {
+          for (const node of parsed.retrieval.visited) {
+            const selector = node.selectorMode ?? "unspecified";
+            selectorModes[selector] = (selectorModes[selector] ?? 0) + 1;
+          }
+        }
+      } catch {
+        plannerModes.unspecified = (plannerModes.unspecified ?? 0) + 1;
+      }
+    }
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return { plannerModes, selectorModes };
+    }
+    throw error;
+  }
+
+  return { plannerModes, selectorModes };
 }
 
 function inferRunStatus(run) {

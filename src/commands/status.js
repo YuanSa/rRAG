@@ -11,6 +11,8 @@ export async function handleStatus(_args, context) {
   context.stdout.write(`- archived staging snapshots: ${status.archivedStaging}\n`);
   context.stdout.write(`- run directories: ${status.runs}\n`);
   context.stdout.write(`- run states: planned=${status.runStates.planned}, executing=${status.runStates.executing}, executed=${status.runStates.executed}, failed=${status.runStates.failed}, unknown=${status.runStates.unknown}\n`);
+  context.stdout.write(`- planner modes: ${formatCounts(status.runModes.plannerModes)}\n`);
+  context.stdout.write(`- selector modes: ${formatCounts(status.runModes.selectorModes)}\n`);
   context.stdout.write(`- llm enabled: ${context.config.llm_enabled ? "yes" : "no"}\n`);
   context.stdout.write(`- llm configured: ${context.llm.configured ? "yes" : "no"}\n`);
   context.stdout.write(`- llm model: ${context.config.llm_model}\n`);
@@ -28,4 +30,15 @@ export async function handleStatus(_args, context) {
       context.stdout.write(`  - ${skillId}\n`);
     }
   }
+}
+
+function formatCounts(counts) {
+  const entries = Object.entries(counts);
+  if (entries.length === 0) {
+    return "none";
+  }
+  return entries
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([key, value]) => `${key}=${value}`)
+    .join(", ");
 }

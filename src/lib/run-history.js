@@ -18,6 +18,7 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         state: run.state?.status ?? inferStatus(run),
         createdAt: run.created_at ?? "",
         plannerMode: run.planner?.mode ?? "",
+        selectorModes: collectSelectorModes(run),
         todoItems: run.counts?.todo_items ?? 0
       });
     } catch {
@@ -27,12 +28,25 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         state: "unknown",
         createdAt: "",
         plannerMode: "",
+        selectorModes: [],
         todoItems: 0
       });
     }
   }
 
   return runs;
+}
+
+function collectSelectorModes(run) {
+  const modes = new Set();
+  if (Array.isArray(run?.retrieval?.visited)) {
+    for (const node of run.retrieval.visited) {
+      if (node.selectorMode) {
+        modes.add(node.selectorMode);
+      }
+    }
+  }
+  return [...modes];
 }
 
 function inferStatus(run) {

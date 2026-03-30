@@ -19,6 +19,9 @@ export async function handleRuns(args, context) {
     if (run.plannerMode) {
       context.stdout.write(` planner=${run.plannerMode}`);
     }
+    if (run.selectorModes.length > 0) {
+      context.stdout.write(` selector=${run.selectorModes.join(",")}`);
+    }
     context.stdout.write(`\n`);
   }
 }
