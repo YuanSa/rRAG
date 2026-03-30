@@ -13,6 +13,7 @@ The current codebase provides:
 - heuristic ask retrieval over skill summaries plus passage extraction
 - heuristic update planning that can create or update skills and add category links
 - soft-delete via archiving skills out of the active knowledge base
+- optional OpenAI-compatible LLM integration for planning, review, and grounded answer synthesis
 
 ## Quick Start
 
@@ -25,6 +26,29 @@ node ./bin/rrag.js ask "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
 node ./bin/rrag.js status
 ```
+
+## Optional LLM Mode
+
+The prototype now supports an optional OpenAI-compatible chat endpoint.
+
+Example:
+
+```bash
+export OPENAI_API_KEY=...
+node ./bin/rrag.js config set llm_enabled true
+node ./bin/rrag.js config set llm_model gpt-4.1-mini
+node ./bin/rrag.js update --apply
+```
+
+Relevant config keys:
+
+- `llm_enabled`
+- `llm_provider`
+- `llm_base_url`
+- `llm_model`
+- `llm_api_key_env`
+
+If the model is disabled or the request fails, the code falls back to deterministic heuristic behavior.
 
 ## Current Status
 
@@ -45,6 +69,7 @@ Implemented today:
 - rebuild planning with conservative cleanup suggestions and executable safe actions
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection
+- optional model-backed planning and answer synthesis with automatic heuristic fallback
 
 Still placeholder:
 

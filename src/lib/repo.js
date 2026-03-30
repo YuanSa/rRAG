@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { DEFAULT_CONFIG, loadConfig, saveConfig } from "./config.js";
+import { createLlmClient } from "./llm.js";
 
 const REQUIRED_DIRS = [
   "skills",
@@ -29,6 +30,7 @@ export async function createRepoContext({ cwd, stdout, stderr }) {
     stderr,
     configPath,
     config,
+    llm: createLlmClient(config),
     paths: {
       skills: path.join(cwd, "skills"),
       categories: path.join(cwd, "categories"),

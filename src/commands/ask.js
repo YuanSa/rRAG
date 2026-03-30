@@ -1,4 +1,5 @@
 import { retrieveRelevantPassages } from "../lib/retrieval.js";
+import { synthesizeGroundedAnswer } from "../lib/answer.js";
 
 export async function handleAsk(args, context) {
   const question = args.join(" ").trim();
@@ -23,8 +24,10 @@ export async function handleAsk(args, context) {
     return;
   }
 
+  const answer = await synthesizeGroundedAnswer({ question, results, llm: context.llm });
+
   context.stdout.write(`Matched skills: ${results.length}\n\n`);
-  context.stdout.write(`Answer: ${synthesizeAnswer(results)}\n\n`);
+  context.stdout.write(`Answer: ${answer}\n\n`);
   for (const result of results) {
     context.stdout.write(`## ${result.title}\n`);
     context.stdout.write(`- skill_id: ${result.skillId}\n`);
@@ -46,19 +49,4 @@ export async function handleAsk(args, context) {
 
 function oneLine(text) {
   return text.replace(/\s+/g, " ").trim();
-}
-
-function synthesizeAnswer(results) {
-  const passages = [];
-  for (const result of results) {
-    for (const passage of result.passages) {
-      passages.push(oneLine(passage.text.replace(/^#+\s*/, "")));
-    }
-  }
-
-  const unique = [...new Set(passages)].filter(Boolean);
-  if (unique.length === 0) {
-    return results.map(result => result.summary).join(" ");
-  }
-  return unique.slice(0, 3).join(" ");
 }

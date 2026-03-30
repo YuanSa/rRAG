@@ -31,8 +31,9 @@ The implementation is intentionally split into small layers:
 These are the highest-value missing pieces:
 
 1. LLM integration
-- no actual model client exists yet
-- planner, review, and ask synthesis are still heuristic
+- an OpenAI-compatible model client now exists
+- planner/review/answer synthesis can optionally use it
+- category traversal and semantic execution are still mostly heuristic
 
 2. Git-native execution workflow
 - apply/rebuild do not yet create a branch per run

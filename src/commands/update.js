@@ -12,7 +12,7 @@ import {
 import { collectSkillSummaries } from "../lib/skill-discovery.js";
 import { validateRepo } from "../lib/fs-api.js";
 import { getCurrentBranch, getGitStatus, getHeadCommit, isGitRepo } from "../lib/git.js";
-import { buildUpdatePlan, buildUpdateReview } from "../lib/planner.js";
+import { buildUpdatePlanWithLlm, buildUpdateReviewWithLlm } from "../lib/planner.js";
 import { executePlan } from "../lib/executor.js";
 
 export async function handleUpdate(args, context) {
@@ -57,13 +57,14 @@ async function applyUpdate(context) {
   const currentBranch = gitRepo ? await getCurrentBranch(context.cwd) : "";
   const headCommit = gitRepo ? await getHeadCommit(context.cwd) : "";
 
-  const { plan, stagedDecisions } = await buildUpdatePlan({
+  const { plan, stagedDecisions, plannerMode, plannerError } = await buildUpdatePlanWithLlm({
     stagedTexts,
     skillSummaries,
     categoriesRoot: context.paths.categories,
-    skillsRoot: context.paths.skills
+    skillsRoot: context.paths.skills,
+    llm: context.llm
   });
-  const reviewText = buildUpdateReview({ stagedTexts, skillSummaries, stagedDecisions });
+  const reviewText = await buildUpdateReviewWithLlm({ stagedTexts, skillSummaries, stagedDecisions, llm: context.llm });
 
   await writeTodo(runPath, plan);
   await writePlan(runPath, plan);
@@ -95,6 +96,10 @@ async function applyUpdate(context) {
       existing_skills: skillSummaries.length,
       todo_items: plan.length
     },
+    planner: {
+      mode: plannerMode,
+      error: plannerError ?? null
+    },
     plan,
     decisions: stagedDecisions,
     execution
@@ -108,6 +113,7 @@ async function applyUpdate(context) {
     updated_skills: execution.updatedSkills.length,
     archived_staging_path: archivedPath,
     execution_mode: execution.mode,
+    planner_mode: plannerMode,
     next_step: "Replace heuristic planning and execution with LLM-backed planning, review, and git commits."
   });
 
@@ -117,6 +123,10 @@ async function applyUpdate(context) {
     context.stdout.write(`Git branch: ${currentBranch || "(detached)"}\n`);
   } else {
     context.stdout.write("Git: not available in this working tree\n");
+  }
+  context.stdout.write(`Planner mode: ${plannerMode}\n`);
+  if (plannerError) {
+    context.stdout.write(`Planner fallback reason: ${plannerError}\n`);
   }
   context.stdout.write(`Execution mode: ${execution.mode}\n`);
   context.stdout.write(`Created skills: ${execution.createdSkills.length}\n`);
