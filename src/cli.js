@@ -2,6 +2,7 @@ import { handleAsk } from "./commands/ask.js";
 import { handleConfig } from "./commands/config.js";
 import { handleDelete } from "./commands/delete.js";
 import { handleRebuild } from "./commands/rebuild.js";
+import { handleResume } from "./commands/resume.js";
 import { handleStatus } from "./commands/status.js";
 import { handleUpdate } from "./commands/update.js";
 import { formatHelp } from "./lib/help.js";
@@ -29,6 +30,9 @@ export async function runCli(argv, options = {}) {
       return;
     case "rebuild":
       await handleRebuild(rest, context);
+      return;
+    case "resume":
+      await handleResume(rest, context);
       return;
     case "delete":
       await handleDelete(rest, context);

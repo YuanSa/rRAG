@@ -1,0 +1,81 @@
+import { executePlan } from "../lib/executor.js";
+import { findFirstPendingTodoIndex, readPlan, readRunManifest, readSummary, readTodo, updateRunManifest, writeSummary } from "../lib/run-artifacts.js";
+import { validateRepo } from "../lib/fs-api.js";
+
+export async function handleResume(args, context) {
+  const runId = args[0];
+  if (!runId) {
+    throw new Error("resume requires a run id, e.g. rrag resume 2026-03-30T02-28-24.304Z");
+  }
+
+  const runPath = `${context.paths.runs}/${runId}`;
+  const manifest = await readRunManifest(runPath);
+  const plan = await readPlan(runPath);
+  const todo = await readTodo(runPath);
+  const existingSummary = await safeReadSummary(runPath);
+  const startIndex = findFirstPendingTodoIndex(todo);
+
+  if (startIndex === -1) {
+    context.stdout.write(`Run ${runId} has no pending TODO items.\n`);
+    return;
+  }
+
+  await updateRunManifest(runPath, {
+    state: {
+      status: "executing",
+      resumed_at: new Date().toISOString(),
+      resume_from_index: startIndex
+    }
+  });
+
+  const execution = await executePlan({
+    runPath,
+    plan,
+    context,
+    startIndex,
+    onProgress: async ({ index, note }) => {
+      await updateRunManifest(runPath, {
+        state: {
+          status: "executing",
+          last_completed_index: index,
+          last_note: note,
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+  });
+
+  const validation = await validateRepo(context.paths);
+  await updateRunManifest(runPath, {
+    state: {
+      status: execution.ok ? "executed" : "failed",
+      resumed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    plan: await readTodo(runPath),
+    execution
+  });
+  await writeSummary(runPath, {
+    ...(existingSummary ?? {}),
+    resumed: true,
+    resumed_from_index: startIndex,
+    execution_mode: execution.mode,
+    completed_steps: execution.completedSteps,
+    validation_ok: validation.ok
+  });
+
+  context.stdout.write(`Resumed run ${runId} from TODO index ${startIndex}.\n`);
+  context.stdout.write(`Completed steps: ${execution.completedSteps}\n`);
+  context.stdout.write(`Validation: ${validation.ok ? "ok" : "failed"}\n`);
+}
+
+async function safeReadSummary(runPath) {
+  try {
+    return await readSummary(runPath);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}

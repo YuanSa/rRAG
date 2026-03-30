@@ -10,6 +10,7 @@ export async function handleStatus(_args, context) {
   context.stdout.write(`- active links: ${status.links}\n`);
   context.stdout.write(`- archived staging snapshots: ${status.archivedStaging}\n`);
   context.stdout.write(`- run directories: ${status.runs}\n`);
+  context.stdout.write(`- run states: planned=${status.runStates.planned}, executing=${status.runStates.executing}, executed=${status.runStates.executed}, failed=${status.runStates.failed}, unknown=${status.runStates.unknown}\n`);
   context.stdout.write(`- llm enabled: ${context.config.llm_enabled ? "yes" : "no"}\n`);
   context.stdout.write(`- llm configured: ${context.llm.configured ? "yes" : "no"}\n`);
   context.stdout.write(`- llm model: ${context.config.llm_model}\n`);

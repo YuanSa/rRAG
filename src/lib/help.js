@@ -7,6 +7,7 @@ Usage:
   rrag update --apply
   rrag ask "<question>"
   rrag rebuild [--dry-run]
+  rrag resume <run_id>
   rrag delete <skill_id>
   rrag status
   rrag config set <key> <value>

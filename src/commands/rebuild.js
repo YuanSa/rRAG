@@ -1,4 +1,4 @@
-import { createRunDirectory, createTodoItem, writePlan, writeReview, writeRunManifest, writeSummary, writeTodo } from "../lib/run-artifacts.js";
+import { createRunDirectory, createTodoItem, readTodo, updateRunManifest, writePlan, writeReview, writeRunManifest, writeSummary, writeTodo } from "../lib/run-artifacts.js";
 import { collectSkillSummaries } from "../lib/skill-discovery.js";
 import { getCurrentBranch, getGitStatus, getHeadCommit, isGitRepo } from "../lib/git.js";
 import { collectCategoryLinks } from "../lib/retrieval.js";
@@ -17,13 +17,15 @@ export async function handleRebuild(args, context) {
 
   await writeTodo(runPath, todoItems);
   await writePlan(runPath, todoItems);
-  const execution = dryRun ? null : await executePlan({ runPath, plan: todoItems, context });
-  const validation = await validateRepo(context.paths);
   await writeRunManifest(runPath, {
     mode: "rebuild",
     run_id: runId,
     created_at: new Date().toISOString(),
     repo_root: context.cwd,
+    state: {
+      status: dryRun ? "planned" : "executing",
+      updated_at: new Date().toISOString()
+    },
     git: {
       available: gitRepo,
       branch: gitRepo ? await getCurrentBranch(context.cwd) : "",
@@ -35,7 +37,30 @@ export async function handleRebuild(args, context) {
       links_scanned: links.length,
       todo_items: todoItems.length
     },
+    plan: todoItems
+  });
+  const execution = dryRun ? null : await executePlan({
+    runPath,
     plan: todoItems,
+    context,
+    onProgress: async ({ index, note }) => {
+      await updateRunManifest(runPath, {
+        state: {
+          status: "executing",
+          last_completed_index: index,
+          last_note: note,
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+  });
+  const validation = await validateRepo(context.paths);
+  await updateRunManifest(runPath, {
+    state: {
+      status: dryRun ? "planned" : execution.ok ? "executed" : "failed",
+      updated_at: new Date().toISOString()
+    },
+    plan: await readTodo(runPath),
     execution,
     validation
   });

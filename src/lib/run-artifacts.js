@@ -28,16 +28,41 @@ export async function writeSummary(runPath, summary) {
   return summaryPath;
 }
 
+export async function readSummary(runPath) {
+  const summaryPath = path.join(runPath, "summary.json");
+  const content = await readFile(summaryPath, "utf8");
+  return JSON.parse(content);
+}
+
 export async function writeRunManifest(runPath, manifest) {
   const manifestPath = path.join(runPath, "run.json");
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifestPath;
 }
 
+export async function readRunManifest(runPath) {
+  const manifestPath = path.join(runPath, "run.json");
+  const content = await readFile(manifestPath, "utf8");
+  return JSON.parse(content);
+}
+
+export async function updateRunManifest(runPath, patch) {
+  const current = await readRunManifest(runPath);
+  const next = deepMerge(current, patch);
+  await writeRunManifest(runPath, next);
+  return next;
+}
+
 export async function writePlan(runPath, plan) {
   const planPath = path.join(runPath, "plan.json");
   await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
   return planPath;
+}
+
+export async function readPlan(runPath) {
+  const planPath = path.join(runPath, "plan.json");
+  const content = await readFile(planPath, "utf8");
+  return JSON.parse(content);
 }
 
 export async function readTodo(runPath) {
@@ -59,6 +84,10 @@ export async function markTodoItemDone(runPath, index, note) {
   };
   await writeTodo(runPath, items);
   return items[index];
+}
+
+export function findFirstPendingTodoIndex(items) {
+  return items.findIndex(item => !item.done);
 }
 
 export async function archiveStaging(stagingRoot, archiveRoot, runId, manifest) {
@@ -120,4 +149,25 @@ function parseTodoLine(line) {
     text: match.groups.text,
     note: match.groups.note ?? null
   };
+}
+
+function deepMerge(base, patch) {
+  if (Array.isArray(base) || Array.isArray(patch)) {
+    return patch;
+  }
+  if (!isObject(base) || !isObject(patch)) {
+    return patch;
+  }
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) {
+      continue;
+    }
+    merged[key] = key in base ? deepMerge(base[key], value) : value;
+  }
+  return merged;
+}
+
+function isObject(value) {
+  return value !== null && typeof value === "object";
 }

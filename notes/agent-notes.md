@@ -49,7 +49,9 @@ These are the highest-value missing pieces:
 - there is no semantic rewrite, dedupe merge, or split behavior yet
 
 5. Plan resumability
-- the run manifest stores the plan, but there is no command yet to resume a partially executed run
+- `rrag resume <run_id>` now exists
+- run manifests track planned/executing/executed/failed
+- next improvement would be reconstructing executor state for more complex multi-step runs
 
 ## Suggested Next Steps
 

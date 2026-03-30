@@ -1,7 +1,7 @@
 import { archiveSkill, createCategory, createSkill, linkSkill, skillExists, unlinkSkill, updateSkill } from "./fs-api.js";
 import { markTodoItemDone } from "./run-artifacts.js";
 
-export async function executePlan({ runPath, plan, context }) {
+export async function executePlan({ runPath, plan, context, startIndex = 0, state = new Map(), onProgress }) {
   const execution = {
     ok: true,
     mode: "heuristic-plan",
@@ -9,17 +9,21 @@ export async function executePlan({ runPath, plan, context }) {
     updatedSkills: [],
     linkedSkills: [],
     archivedSkills: [],
-    notes: []
+    notes: [],
+    startIndex,
+    completedSteps: 0
   };
 
-  const state = new Map();
-
   try {
-    for (let index = 0; index < plan.length; index += 1) {
+    for (let index = startIndex; index < plan.length; index += 1) {
       const item = plan[index];
+      if (item.done) {
+        continue;
+      }
       const result = await executeItem(item, state, context);
       const note = result?.note ?? "done";
       await markTodoItemDone(runPath, index, note);
+      execution.completedSteps += 1;
 
       if (result?.createdSkill) {
         execution.createdSkills.push(result.createdSkill);
@@ -32,6 +36,10 @@ export async function executePlan({ runPath, plan, context }) {
       }
       if (result?.archivedSkill) {
         execution.archivedSkills.push(result.archivedSkill);
+      }
+
+      if (onProgress) {
+        await onProgress({ index, item, note, result, execution });
       }
     }
 

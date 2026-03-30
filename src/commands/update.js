@@ -3,6 +3,8 @@ import { collectStagingTexts, addTextToStaging, copyPathToStaging } from "../lib
 import {
   archiveStaging,
   createRunDirectory,
+  readTodo,
+  updateRunManifest,
   writeReview,
   writeRunManifest,
   writePlan,
@@ -69,22 +71,15 @@ async function applyUpdate(context) {
   await writeTodo(runPath, plan);
   await writePlan(runPath, plan);
   await writeReview(runPath, reviewText);
-  const execution = await executePlan({ runPath, plan, context });
-  const validation = await validateRepo(context.paths);
-  const archivedPath = await archiveStaging(context.paths.staging, context.paths.archiveStaging, runId, {
-    status: execution.ok ? "executed" : "failed",
-    started_at: new Date().toISOString(),
-    staged_files: stagedTexts.map(item => item.relativePath),
-    run_id: runId,
-    run_path: runPath,
-    execution,
-    validation
-  });
   await writeRunManifest(runPath, {
     mode: "update",
     run_id: runId,
     created_at: new Date().toISOString(),
     repo_root: context.cwd,
+    state: {
+      status: "planned",
+      updated_at: new Date().toISOString()
+    },
     git: {
       available: gitRepo,
       branch: currentBranch,
@@ -101,8 +96,48 @@ async function applyUpdate(context) {
       error: plannerError ?? null
     },
     plan,
-    decisions: stagedDecisions,
-    execution
+    decisions: stagedDecisions
+  });
+  await updateRunManifest(runPath, {
+    state: {
+      status: "executing",
+      updated_at: new Date().toISOString()
+    }
+  });
+  const execution = await executePlan({
+    runPath,
+    plan,
+    context,
+    onProgress: async ({ index, note }) => {
+      await updateRunManifest(runPath, {
+        state: {
+          status: "executing",
+          last_completed_index: index,
+          last_note: note,
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+  });
+  const validation = await validateRepo(context.paths);
+  const archivedPath = await archiveStaging(context.paths.staging, context.paths.archiveStaging, runId, {
+    status: execution.ok ? "executed" : "failed",
+    started_at: new Date().toISOString(),
+    staged_files: stagedTexts.map(item => item.relativePath),
+    run_id: runId,
+    run_path: runPath,
+    execution,
+    validation
+  });
+  await updateRunManifest(runPath, {
+    state: {
+      status: execution.ok ? "executed" : "failed",
+      archived_staging_path: archivedPath,
+      updated_at: new Date().toISOString()
+    },
+    plan: await readTodo(runPath),
+    execution,
+    validation
   });
   await writeSummary(runPath, {
     mode: "update",

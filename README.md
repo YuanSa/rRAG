@@ -24,6 +24,7 @@ node ./bin/rrag.js update --file ./some-docs
 node ./bin/rrag.js update --apply
 node ./bin/rrag.js ask "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
+node ./bin/rrag.js resume 2026-03-30T16-22-24.637Z
 node ./bin/rrag.js status
 ```
 
@@ -62,6 +63,7 @@ Implemented today:
 - filtered file copying into staging
 - run artifact generation
 - structured `plan.json` artifacts alongside human-readable `TODO.md`
+- resumable runs via `run.json` state tracking and `rrag resume <run_id>`
 - git environment discovery for future branch/commit orchestration
 - TODO artifact formatting that is ready for step-by-step execution later
 - heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills
@@ -70,6 +72,7 @@ Implemented today:
 - delete command that archives a skill and removes its category links
 - status command for quick repository introspection
 - optional model-backed planning and answer synthesis with automatic heuristic fallback
+- resumable execution for planned runs that still have pending TODO items
 
 Still placeholder:
 

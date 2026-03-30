@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { collectSkillSummaries } from "./skill-discovery.js";
 import { collectCategoryLinks } from "./retrieval.js";
@@ -10,6 +10,7 @@ export async function collectRepoStatus(paths) {
   const archivedSkills = await countArchivedSkills(path.join(paths.archive, "skills"));
   const archivedStaging = await countDirectories(paths.archiveStaging);
   const runs = await countDirectories(paths.runs);
+  const runStates = await collectRunStates(paths.runs);
 
   return {
     skills: skills.length,
@@ -18,6 +19,7 @@ export async function collectRepoStatus(paths) {
     categories: categories.length,
     archivedStaging,
     runs,
+    runStates,
     topCategories: summarizeTopCategories(links),
     unlinkedSkills: skills.filter(skill => !links.some(link => link.skillId === skill.id)).map(skill => skill.id)
   };
@@ -52,6 +54,58 @@ async function countDirectories(rootPath) {
     }
     throw error;
   }
+}
+
+async function collectRunStates(runsRoot) {
+  const counts = {
+    planned: 0,
+    executing: 0,
+    executed: 0,
+    failed: 0,
+    unknown: 0
+  };
+
+  try {
+    const entries = await readdir(runsRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const runJsonPath = path.join(runsRoot, entry.name, "run.json");
+      try {
+        const raw = await readFile(runJsonPath, "utf8");
+        const parsed = JSON.parse(raw);
+        const status = inferRunStatus(parsed);
+        counts[status] = (counts[status] ?? 0) + 1;
+      } catch {
+        counts.unknown += 1;
+      }
+    }
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return counts;
+    }
+    throw error;
+  }
+
+  return counts;
+}
+
+function inferRunStatus(run) {
+  if (run?.state?.status) {
+    return run.state.status;
+  }
+  if (run?.execution?.ok === true) {
+    return "executed";
+  }
+  if (run?.execution?.ok === false) {
+    return "failed";
+  }
+  if (Array.isArray(run?.plan)) {
+    const hasPending = run.plan.some(item => !item.done);
+    return hasPending ? "planned" : "executed";
+  }
+  return "unknown";
 }
 
 function summarizeTopCategories(links) {
