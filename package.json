@@ -1,0 +1,16 @@
+{
+  "name": "rrag",
+  "version": "0.1.0",
+  "description": "LLM-driven hierarchical knowledge system using reasoning instead of embeddings",
+  "type": "module",
+  "bin": {
+    "rrag": "./bin/rrag.js"
+  },
+  "scripts": {
+    "start": "node ./bin/rrag.js",
+    "check": "node ./bin/rrag.js --help"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

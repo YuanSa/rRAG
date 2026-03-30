@@ -1,0 +1,7 @@
+{
+  "id": "52741769-6678-421d-b165-445efd689794",
+  "title": "Agent loops need bounded search depth and node budgets.",
+  "summary": "Agent loops need bounded search depth and node budgets. Agent loops should also cap total explored nodes to avoid runaway BFS costs.",
+  "created_at": "2026-03-29T17:36:27.491Z",
+  "updated_at": "2026-03-29T17:44:29.380Z"
+}

@@ -1,0 +1,162 @@
+import { createRunDirectory, createTodoItem, writeReview, writeRunManifest, writeSummary, writeTodo } from "../lib/run-artifacts.js";
+import { collectSkillSummaries } from "../lib/skill-discovery.js";
+import { getCurrentBranch, getGitStatus, getHeadCommit, isGitRepo } from "../lib/git.js";
+import { collectCategoryLinks } from "../lib/retrieval.js";
+import { executePlan } from "../lib/executor.js";
+import { validateRepo } from "../lib/fs-api.js";
+
+export async function handleRebuild(args, context) {
+  const dryRun = args.includes("--dry-run");
+  const skillSummaries = await collectSkillSummaries(context.paths.skills);
+  const links = await collectCategoryLinks(context.paths.categories);
+  const { runId, runPath } = await createRunDirectory(context.paths.runs);
+  const gitRepo = await isGitRepo(context.cwd);
+  const gitStatus = await getGitStatus(context.cwd);
+
+  const todoItems = buildRebuildPlan(skillSummaries, links);
+
+  await writeTodo(runPath, todoItems);
+  const execution = dryRun ? null : await executePlan({ runPath, plan: todoItems, context });
+  const validation = await validateRepo(context.paths);
+  await writeRunManifest(runPath, {
+    mode: "rebuild",
+    run_id: runId,
+    created_at: new Date().toISOString(),
+    repo_root: context.cwd,
+    git: {
+      available: gitRepo,
+      branch: gitRepo ? await getCurrentBranch(context.cwd) : "",
+      head: gitRepo ? await getHeadCommit(context.cwd) : "",
+      status: gitStatus.ok ? gitStatus.output : gitStatus.error
+    },
+    counts: {
+      skills_scanned: skillSummaries.length,
+      links_scanned: links.length,
+      todo_items: todoItems.length
+    },
+    plan: todoItems,
+    execution,
+    validation
+  });
+  await writeReview(
+    runPath,
+    [
+      "# Rebuild Review",
+      "",
+      `- Dry run: ${dryRun ? "yes" : "no"}`,
+      `- Skills scanned: ${skillSummaries.length}`,
+      `- Links scanned: ${links.length}`,
+      `- Planned actions: ${todoItems.length}`,
+      "",
+      ...buildReviewNotes(skillSummaries, links),
+      "",
+      "This rebuild plan is heuristic and currently not auto-executed."
+    ].join("\n")
+  );
+  await writeSummary(runPath, {
+    mode: "rebuild",
+    run_id: runId,
+    dry_run: dryRun,
+    skills_scanned: skillSummaries.length,
+    links_scanned: links.length,
+    planned_actions: todoItems.length,
+    executed: !dryRun,
+    validation_ok: validation.ok
+  });
+
+  context.stdout.write(`Generated rebuild artifacts in ${runPath}\n`);
+  if (dryRun) {
+    context.stdout.write("Dry run complete.\n");
+  } else {
+    context.stdout.write(`Executed heuristic rebuild plan. Validation: ${validation.ok ? "ok" : "failed"}\n`);
+    if (execution?.notes?.length) {
+      context.stdout.write(`Notes: ${execution.notes.join(" | ")}\n`);
+    }
+  }
+}
+
+function buildRebuildPlan(skillSummaries, links) {
+  const todoItems = [
+    createTodoItem("scan_categories", "Inspect the entire categories tree for duplicate or drifting taxonomy"),
+    createTodoItem("scan_skills", `Review classification quality for ${skillSummaries.length} skill summaries`)
+  ];
+
+  const linkMap = new Map();
+  for (const link of links) {
+    const existing = linkMap.get(link.skillId) ?? [];
+    existing.push(link.categoryPath);
+    linkMap.set(link.skillId, existing);
+  }
+
+  for (const skill of skillSummaries) {
+    const categories = linkMap.get(skill.id) ?? [];
+    if (categories.length === 0) {
+      todoItems.push(
+        createTodoItem("link_skill", `Link unclassified skill \`${skill.id}\` under \`Imported\``, {
+          data: {
+            skillId: skill.id,
+            categoryPath: "Imported"
+          }
+        })
+      );
+      continue;
+    }
+
+    if (categories.length > 1 && categories.includes("Imported")) {
+      todoItems.push(
+        createTodoItem("unlink_skill", `Remove fallback Imported link from \`${skill.id}\` because better categories exist`, {
+          data: {
+            skillId: skill.id,
+            categoryPath: "Imported"
+          }
+        })
+      );
+    }
+  }
+
+  const duplicateSummaries = findDuplicateSummaries(skillSummaries);
+  for (const pair of duplicateSummaries) {
+    todoItems.push(
+      createTodoItem("review_duplicates", `Review possible duplicate skills \`${pair[0].id}\` and \`${pair[1].id}\``)
+    );
+  }
+
+  return todoItems;
+}
+
+function buildReviewNotes(skillSummaries, links) {
+  const notes = [];
+  const unlinked = skillSummaries.filter(skill => !links.some(link => link.skillId === skill.id));
+  if (unlinked.length > 0) {
+    notes.push(`- Unlinked skills detected: ${unlinked.length}`);
+  } else {
+    notes.push("- Every skill currently has at least one category link.");
+  }
+
+  const importedOnly = skillSummaries.filter(skill => {
+    const categories = links.filter(link => link.skillId === skill.id).map(link => link.categoryPath);
+    return categories.length === 1 && categories[0] === "Imported";
+  });
+  notes.push(`- Skills still only under Imported: ${importedOnly.length}`);
+
+  const duplicates = findDuplicateSummaries(skillSummaries);
+  notes.push(`- Possible duplicate skill pairs: ${duplicates.length}`);
+
+  return notes;
+}
+
+function findDuplicateSummaries(skillSummaries) {
+  const duplicates = [];
+  for (let i = 0; i < skillSummaries.length; i += 1) {
+    for (let j = i + 1; j < skillSummaries.length; j += 1) {
+      if (normalize(skillSummaries[i].summary) && normalize(skillSummaries[i].summary) === normalize(skillSummaries[j].summary)) {
+        duplicates.push([skillSummaries[i], skillSummaries[j]]);
+      }
+    }
+  }
+  return duplicates;
+}
+
+function normalize(text) {
+  return text.replace(/\s+/g, " ").trim().toLowerCase();
+}
