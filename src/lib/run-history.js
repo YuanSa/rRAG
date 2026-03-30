@@ -21,7 +21,9 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         selectorModes: collectSelectorModes(run),
         todoItems: run.counts?.todo_items ?? 0,
         question: run.question ?? "",
-        resultCount: run.result_count ?? 0
+        resultCount: run.result_count ?? 0,
+        visitedNodes: Array.isArray(run?.retrieval?.visited) ? run.retrieval.visited.length : 0,
+        maxDepth: Array.isArray(run?.retrieval?.visited) ? Math.max(...run.retrieval.visited.map(node => node.depth ?? 0), 0) : 0
       });
     } catch {
       runs.push({
@@ -33,7 +35,9 @@ export async function listRuns(runsRoot, { limit = 20 } = {}) {
         selectorModes: [],
         todoItems: 0,
         question: "",
-        resultCount: 0
+        resultCount: 0,
+        visitedNodes: 0,
+        maxDepth: 0
       });
     }
   }

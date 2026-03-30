@@ -12,6 +12,7 @@ export async function collectRepoStatus(paths) {
   const runs = await countDirectories(paths.runs);
   const runStates = await collectRunStates(paths.runs);
   const runModes = await collectRunModes(paths.runs);
+  const askStats = await collectAskRunStats(paths.runs);
 
   return {
     skills: skills.length,
@@ -22,6 +23,7 @@ export async function collectRepoStatus(paths) {
     runs,
     runStates,
     runModes,
+    askStats,
     topCategories: summarizeTopCategories(links),
     unlinkedSkills: skills.filter(skill => !links.some(link => link.skillId === skill.id)).map(skill => skill.id)
   };
@@ -127,6 +129,47 @@ async function collectRunModes(runsRoot) {
   }
 
   return { plannerModes, selectorModes };
+}
+
+async function collectAskRunStats(runsRoot) {
+  const stats = {
+    askRuns: 0,
+    totalVisitedNodes: 0,
+    maxDepthSeen: 0,
+    totalResults: 0
+  };
+
+  try {
+    const entries = await readdir(runsRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const runJsonPath = path.join(runsRoot, entry.name, "run.json");
+      try {
+        const raw = await readFile(runJsonPath, "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed?.mode !== "ask") {
+          continue;
+        }
+        stats.askRuns += 1;
+        const visited = Array.isArray(parsed?.retrieval?.visited) ? parsed.retrieval.visited : [];
+        stats.totalVisitedNodes += visited.length;
+        const maxDepth = visited.length > 0 ? Math.max(...visited.map(node => node.depth ?? 0), 0) : 0;
+        stats.maxDepthSeen = Math.max(stats.maxDepthSeen, maxDepth);
+        stats.totalResults += Number(parsed?.result_count ?? 0);
+      } catch {
+        continue;
+      }
+    }
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return stats;
+    }
+    throw error;
+  }
+
+  return stats;
 }
 
 function inferRunStatus(run) {
