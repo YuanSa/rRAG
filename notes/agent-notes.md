@@ -60,7 +60,8 @@ These are the highest-value missing pieces:
 5. Plan resumability
 - `rrag resume <run_id>` now exists
 - run manifests track planned/executing/executed/failed
-- next improvement would be reconstructing executor state for more complex multi-step runs
+- resume now reconstructs staged-to-skill mappings from previously completed `create_skill` and `update_skill` steps
+- next improvement would be persisting even richer executor state for more complex multi-step runs
 
 ## Suggested Next Steps
 

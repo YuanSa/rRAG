@@ -73,6 +73,7 @@ Implemented today:
 - run artifact generation
 - structured `plan.json` artifacts alongside human-readable `TODO.md`
 - resumable runs via `run.json` state tracking and `rrag resume <run_id>`
+- resume now reconstructs staged-to-skill mappings from prior completed TODO items so dependent link steps can continue safely
 - run history inspection with `rrag runs`
 - persisted ask traces and answers under `runs/`
 - git environment discovery for future branch/commit orchestration

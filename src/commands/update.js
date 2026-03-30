@@ -108,14 +108,15 @@ async function applyUpdate(context) {
     runPath,
     plan,
     context,
-    onProgress: async ({ index, note }) => {
+    onProgress: async ({ index, note, execution: progressExecution }) => {
       await updateRunManifest(runPath, {
         state: {
           status: "executing",
           last_completed_index: index,
           last_note: note,
           updated_at: new Date().toISOString()
-        }
+        },
+        execution: progressExecution
       });
     }
   });

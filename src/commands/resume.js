@@ -1,6 +1,7 @@
 import { executePlan } from "../lib/executor.js";
 import { findFirstPendingTodoIndex, readPlan, readRunManifest, readSummary, readTodo, updateRunManifest, writeSummary } from "../lib/run-artifacts.js";
 import { validateRepo } from "../lib/fs-api.js";
+import { buildResumeState } from "../lib/resume-state.js";
 
 export async function handleResume(args, context) {
   const runId = args[0];
@@ -20,6 +21,8 @@ export async function handleResume(args, context) {
     return;
   }
 
+  const resumeState = buildResumeState(plan, manifest, todo, startIndex);
+
   await updateRunManifest(runPath, {
     state: {
       status: "executing",
@@ -33,14 +36,16 @@ export async function handleResume(args, context) {
     plan,
     context,
     startIndex,
-    onProgress: async ({ index, note }) => {
+    state: resumeState,
+    onProgress: async ({ index, note, execution: progressExecution }) => {
       await updateRunManifest(runPath, {
         state: {
           status: "executing",
           last_completed_index: index,
           last_note: note,
           updated_at: new Date().toISOString()
-        }
+        },
+        execution: progressExecution
       });
     }
   });
@@ -59,12 +64,14 @@ export async function handleResume(args, context) {
     ...(existingSummary ?? {}),
     resumed: true,
     resumed_from_index: startIndex,
+    recovered_state_entries: resumeState.size,
     execution_mode: execution.mode,
     completed_steps: execution.completedSteps,
     validation_ok: validation.ok
   });
 
   context.stdout.write(`Resumed run ${runId} from TODO index ${startIndex}.\n`);
+  context.stdout.write(`Recovered staged mappings: ${resumeState.size}\n`);
   context.stdout.write(`Completed steps: ${execution.completedSteps}\n`);
   context.stdout.write(`Validation: ${validation.ok ? "ok" : "failed"}\n`);
 }
