@@ -11,6 +11,7 @@ The current codebase provides:
 - run artifact generation for TODO/review/summary files
 - executed runs now also persist `steps.jsonl`, a per-TODO action log for later diff/commit orchestration
 - executed runs now also generate `changes.md`, a readable change summary derived from the step log
+- executed runs now also generate `commit-message.txt` and `pr-summary.md` drafts from the same step log
 - run manifests with git environment metadata and parseable TODO items
 - ask runs persisted with `answer.md`, `run.json`, and `summary.json`
 - heuristic ask retrieval over skill summaries plus passage extraction

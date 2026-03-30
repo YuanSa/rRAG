@@ -57,6 +57,14 @@ export async function writeChangesSummary(runPath, metadata = {}) {
   return writeMarkdownArtifact(runPath, "changes.md", content);
 }
 
+export async function writeCommitArtifacts(runPath, metadata = {}) {
+  const steps = await readStepLog(runPath);
+  const commitMessage = renderCommitMessage(steps, metadata);
+  const prSummary = renderPrSummary(steps, metadata);
+  await writeMarkdownArtifact(runPath, "commit-message.txt", commitMessage);
+  await writeMarkdownArtifact(runPath, "pr-summary.md", prSummary);
+}
+
 export async function writeSummary(runPath, summary) {
   const summaryPath = path.join(runPath, "summary.json");
   await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
@@ -275,4 +283,123 @@ function renderStepDetails(result) {
     details.push(`category: ${result.category.change} ${result.category.path}`);
   }
   return details;
+}
+
+function renderCommitMessage(steps, metadata) {
+  const subject = deriveCommitSubject(steps, metadata);
+  const bullets = deriveCommitBullets(steps);
+  const lines = [subject, ""];
+
+  if (metadata.mode) {
+    lines.push(`Mode: ${metadata.mode}`);
+  }
+  if (metadata.runId) {
+    lines.push(`Run: ${metadata.runId}`);
+  }
+  if (typeof metadata.completedSteps === "number") {
+    lines.push(`Completed steps: ${metadata.completedSteps}`);
+  }
+  if (metadata.validationOk !== undefined) {
+    lines.push(`Validation: ${metadata.validationOk ? "ok" : "failed"}`);
+  }
+  if (bullets.length > 0) {
+    lines.push("");
+    for (const bullet of bullets) {
+      lines.push(`- ${bullet}`);
+    }
+  }
+
+  return lines.join("\n").trimEnd();
+}
+
+function renderPrSummary(steps, metadata) {
+  const lines = ["# Run Summary", ""];
+  lines.push(`- mode: ${metadata.mode ?? "unknown"}`);
+  if (metadata.runId) {
+    lines.push(`- run_id: ${metadata.runId}`);
+  }
+  if (typeof metadata.completedSteps === "number") {
+    lines.push(`- completed_steps: ${metadata.completedSteps}`);
+  }
+  if (metadata.validationOk !== undefined) {
+    lines.push(`- validation_ok: ${metadata.validationOk ? "yes" : "no"}`);
+  }
+  lines.push("");
+  lines.push("## Highlights");
+  lines.push("");
+
+  const bullets = deriveCommitBullets(steps);
+  if (bullets.length === 0) {
+    lines.push("- No executable changes were recorded.");
+  } else {
+    for (const bullet of bullets) {
+      lines.push(`- ${bullet}`);
+    }
+  }
+
+  return lines.join("\n").trimEnd();
+}
+
+function deriveCommitSubject(steps, metadata) {
+  const changedActions = steps
+    .map(step => step.action)
+    .filter(action => !["scan_categories", "scan_skills", "review_input", "review_skills", "review_plan", "review_duplicates"].includes(action));
+
+  if (changedActions.length === 0) {
+    return `Summarize ${metadata.mode ?? "run"} maintenance`;
+  }
+
+  const unique = [...new Set(changedActions)];
+  if (unique.length === 1) {
+    return humanizeAction(unique[0]);
+  }
+  return `Apply ${metadata.mode ?? "run"} knowledge base changes`;
+}
+
+function deriveCommitBullets(steps) {
+  const bullets = [];
+  for (const step of steps) {
+    const result = step.result ?? {};
+    if (result.createdSkill?.id) {
+      bullets.push(`created skill ${result.createdSkill.id}${result.createdSkill.source ? ` from ${result.createdSkill.source}` : ""}`);
+      continue;
+    }
+    if (result.updatedSkill?.id) {
+      bullets.push(`updated skill ${result.updatedSkill.id}${result.updatedSkill.source ? ` from ${result.updatedSkill.source}` : ""}`);
+      continue;
+    }
+    if (result.linkedSkill?.id && result.linkedSkill?.categoryPath) {
+      bullets.push(`linked skill ${result.linkedSkill.id} under ${result.linkedSkill.categoryPath}`);
+      continue;
+    }
+    if (result.archivedSkill?.id) {
+      bullets.push(`archived skill ${result.archivedSkill.id}`);
+      continue;
+    }
+    if (result.category?.path && result.category?.change) {
+      bullets.push(`${result.category.change.replaceAll("_", " ")} category ${result.category.path}`);
+    }
+  }
+  return bullets;
+}
+
+function humanizeAction(action) {
+  switch (action) {
+    case "create_skill":
+      return "Create knowledge base skill";
+    case "update_skill":
+      return "Update knowledge base skill";
+    case "link_skill":
+      return "Relink knowledge base skills";
+    case "unlink_skill":
+      return "Clean knowledge base links";
+    case "archive_skill":
+      return "Archive knowledge base skill";
+    case "remove_empty_category":
+      return "Clean empty knowledge base categories";
+    case "create_category":
+      return "Create knowledge base categories";
+    default:
+      return `Apply ${action.replaceAll("_", " ")}`;
+  }
 }

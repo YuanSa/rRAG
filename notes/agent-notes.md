@@ -26,6 +26,7 @@ The implementation is intentionally split into small layers:
   Responsible for all run outputs such as `TODO.md`, `review.md`, `summary.json`, and `run.json`.
   It now also appends `steps.jsonl` so each executed TODO item leaves behind a structured action trace.
   Those step traces now also roll up into `changes.md`, which is a much better handoff artifact for future commit and PR generation.
+  The same trace now also feeds `commit-message.txt` and `pr-summary.md` drafts, so git-native execution has starter text available before we automate commits.
 
 - `src/lib/retrieval.js`
   Contains the current deterministic retrieval logic. This is the right place to later add category-level beam search and model-guided passage selection.
@@ -47,6 +48,7 @@ These are the highest-value missing pieces:
 - no PR/MR orchestration exists yet
 - `steps.jsonl` now gives us a stable per-step execution journal that can later feed commit messages and PR summaries
 - `changes.md` now gives us a human-readable run summary without needing to inspect raw JSON artifacts
+- commit and PR draft text can now be derived directly from executed step logs even before real git orchestration lands
 
 3. Tree-guided retrieval
 - ask now traverses category nodes first and records traversal traces

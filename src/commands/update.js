@@ -4,6 +4,7 @@ import {
   archiveStaging,
   createRunDirectory,
   readTodo,
+  writeCommitArtifacts,
   writeChangesSummary,
   updateRunManifest,
   writeReview,
@@ -142,6 +143,12 @@ async function applyUpdate(context) {
     validation
   });
   await writeChangesSummary(runPath, {
+    mode: "update",
+    runId,
+    completedSteps: execution.completedSteps,
+    validationOk: validation.ok
+  });
+  await writeCommitArtifacts(runPath, {
     mode: "update",
     runId,
     completedSteps: execution.completedSteps,
