@@ -47,6 +47,7 @@ These are the highest-value missing pieces:
 - the branch selector is now isolated, so swapping heuristic selection for model-guided selection no longer requires rewriting traversal
 - category scoring now uses a normalized blend of label match, subtree-hint match, and question-token coverage instead of raw overlap only
 - heuristic planning now emits nested category paths such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`, rather than only flat top-level buckets
+- retrieval now enforces `max_total_nodes` as a real traversal budget and records truncation in ask run artifacts and status output
 
 4. Better skill evolution
 - updates currently append a new section

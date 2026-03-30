@@ -45,6 +45,7 @@ export async function retrieveRelevantPassages({
   llm = null,
   maxBranches = 3,
   maxDepth = 4,
+  maxTotalNodes = 50,
   branchMinScore = 1,
   branchScoreMargin = 3
 }) {
@@ -58,6 +59,7 @@ export async function retrieveRelevantPassages({
     questionTokens,
     maxBranches,
     maxDepth,
+    maxTotalNodes,
     branchMinScore,
     branchScoreMargin
   });
@@ -145,13 +147,21 @@ export async function traverseCategories({
   questionTokens,
   maxBranches = 3,
   maxDepth = 4,
+  maxTotalNodes = 50,
   branchMinScore = 1,
   branchScoreMargin = 3
 }) {
   const visited = [];
   const skillMetaCache = new Map();
+  let truncated = false;
+  let stopReason = "";
 
   async function walk(currentPath, parts, depth) {
+    if (visited.length >= maxTotalNodes) {
+      truncated = true;
+      stopReason = `max_total_nodes=${maxTotalNodes}`;
+      return;
+    }
     if (depth > maxDepth) {
       return;
     }
@@ -206,12 +216,21 @@ export async function traverseCategories({
     const nextChildren = branchSelection.selected;
 
     for (const child of nextChildren) {
+      if (visited.length >= maxTotalNodes) {
+        truncated = true;
+        stopReason = `max_total_nodes=${maxTotalNodes}`;
+        break;
+      }
       await walk(child.fullPath, [...parts, child.name], depth + 1);
     }
   }
 
   await walk(categoriesRoot, [], 0);
-  return { visited };
+  return {
+    visited,
+    truncated,
+    stopReason
+  };
 }
 
 async function collectSubtreeHint(categoryPath, skillsRoot, cache) {

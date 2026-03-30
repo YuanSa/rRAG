@@ -13,6 +13,7 @@ The current codebase provides:
 - ask runs persisted with `answer.md`, `run.json`, and `summary.json`
 - heuristic ask retrieval over skill summaries plus passage extraction
 - heuristic category-guided traversal before skill passage extraction
+- traversal budgeting now respects `max_total_nodes` and records when a search is truncated
 - heuristic update planning that can create or update skills and add category links
 - soft-delete via archiving skills out of the active knowledge base
 - optional OpenAI-compatible LLM integration for planning, review, and grounded answer synthesis

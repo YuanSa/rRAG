@@ -152,7 +152,8 @@ async function collectAskRunStats(runsRoot) {
     askRuns: 0,
     totalVisitedNodes: 0,
     maxDepthSeen: 0,
-    totalResults: 0
+    totalResults: 0,
+    truncatedRuns: 0
   };
 
   try {
@@ -174,6 +175,9 @@ async function collectAskRunStats(runsRoot) {
         const maxDepth = visited.length > 0 ? Math.max(...visited.map(node => node.depth ?? 0), 0) : 0;
         stats.maxDepthSeen = Math.max(stats.maxDepthSeen, maxDepth);
         stats.totalResults += Number(parsed?.result_count ?? 0);
+        if (parsed?.retrieval?.truncated) {
+          stats.truncatedRuns += 1;
+        }
       } catch {
         continue;
       }

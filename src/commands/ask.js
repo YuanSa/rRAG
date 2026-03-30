@@ -17,6 +17,7 @@ export async function handleAsk(args, context) {
     llm: context.llm,
     maxBranches: context.config.branch_max_per_level,
     maxDepth: context.config.max_depth,
+    maxTotalNodes: context.config.max_total_nodes,
     branchMinScore: context.config.branch_min_score,
     branchScoreMargin: context.config.branch_score_margin
   });
@@ -56,6 +57,9 @@ export async function handleAsk(args, context) {
       const selectedChildren = node.selectedChildren?.length ? ` selected=${node.selectedChildren.join(",")}` : "";
       const selectorMode = node.selectorMode ? ` selector=${node.selectorMode}` : "";
       context.stdout.write(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selectorMode}${selectedChildren}]\n`);
+    }
+    if (traversal.truncated) {
+      context.stdout.write(`- traversal_budget: stopped early (${traversal.stopReason})\n`);
     }
     context.stdout.write("\n");
   }
@@ -139,6 +143,9 @@ function renderAskArtifact({ question, answer, results, traversal }) {
       const selected = node.selectedChildren?.length ? ` selected=${node.selectedChildren.join(",")}` : "";
       const selector = node.selectorMode ? ` selector=${node.selectorMode}` : "";
       lines.push(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selector}${selected}]`);
+    }
+    if (traversal.truncated) {
+      lines.push(`- traversal_budget: stopped early (${traversal.stopReason})`);
     }
     lines.push("");
   }
