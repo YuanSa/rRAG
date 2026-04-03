@@ -18,6 +18,8 @@ export async function handleStatus(_args, context) {
   context.stdout.write(`- ask stats: runs=${status.askStats.askRuns}, visited_nodes=${status.askStats.totalVisitedNodes}, max_depth=${status.askStats.maxDepthSeen}, total_results=${status.askStats.totalResults}, truncated=${status.askStats.truncatedRuns}, cache_hits=${status.askStats.totalTraversalCacheHits}, cache_misses=${status.askStats.totalTraversalCacheMisses}\n`);
   context.stdout.write(`- llm enabled: ${context.config.llm_enabled ? "yes" : "no"}\n`);
   context.stdout.write(`- llm configured: ${context.llm.configured ? "yes" : "no"}\n`);
+  context.stdout.write(`- llm provider: ${context.llm.provider}\n`);
+  context.stdout.write(`- llm base url: ${context.llm.baseUrl}\n`);
   context.stdout.write(`- llm model: ${context.config.llm_model}\n`);
 
   if (status.topCategories.length > 0) {

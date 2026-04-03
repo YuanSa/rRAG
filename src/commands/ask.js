@@ -56,7 +56,8 @@ export async function handleAsk(args, context) {
       const label = node.path || "(root)";
       const selectedChildren = node.selectedChildren?.length ? ` selected=${node.selectedChildren.join(",")}` : "";
       const selectorMode = node.selectorMode ? ` selector=${node.selectorMode}` : "";
-      context.stdout.write(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selectorMode}${selectedChildren}]\n`);
+      const selectorRationale = node.selectorRationale ? ` rationale=${JSON.stringify(node.selectorRationale)}` : "";
+      context.stdout.write(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selectorMode}${selectedChildren}${selectorRationale}]\n`);
     }
     if (traversal.truncated) {
       context.stdout.write(`- traversal_budget: stopped early (${traversal.stopReason})\n`);
@@ -85,7 +86,11 @@ export async function handleAsk(args, context) {
     context.stdout.write(`\n`);
   }
 
-  context.stdout.write("This is still a deterministic placeholder for the future LLM-guided tree search and passage extraction flow.\n");
+  if (results.some(result => result.traversal?.visited?.some(node => node.selectorMode === "llm"))) {
+    context.stdout.write("Traversal used LLM-guided branch selection where available.\n");
+  } else {
+    context.stdout.write("Traversal is currently using heuristic branch selection because no LLM selector was active.\n");
+  }
 }
 
 function oneLine(text) {
@@ -145,7 +150,8 @@ function renderAskArtifact({ question, answer, results, traversal }) {
       const label = node.path || "(root)";
       const selected = node.selectedChildren?.length ? ` selected=${node.selectedChildren.join(",")}` : "";
       const selector = node.selectorMode ? ` selector=${node.selectorMode}` : "";
-      lines.push(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selector}${selected}]`);
+      const rationale = node.selectorRationale ? ` rationale=${JSON.stringify(node.selectorRationale)}` : "";
+      lines.push(`- ${label} [depth=${node.depth} score=${node.score} skills=${node.skillIds.length}${selector}${selected}${rationale}]`);
     }
     if (traversal.truncated) {
       lines.push(`- traversal_budget: stopped early (${traversal.stopReason})`);

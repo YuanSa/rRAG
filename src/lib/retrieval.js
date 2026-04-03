@@ -223,6 +223,7 @@ export async function traverseCategories({
     });
     visited[visited.length - 1].selectorMode = branchSelection.mode;
     visited[visited.length - 1].selectedChildren = branchSelection.selected.map(child => child.name);
+    visited[visited.length - 1].selectorRationale = branchSelection.rationale ?? "";
     const nextChildren = branchSelection.selected;
 
     for (const child of nextChildren) {

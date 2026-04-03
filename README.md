@@ -20,7 +20,7 @@ The current codebase provides:
 - traversal now caches subtree hints during a run and exposes cache hit/miss signals in ask history
 - heuristic update planning that can create or update skills and add category links
 - soft-delete via archiving skills out of the active knowledge base
-- optional OpenAI-compatible LLM integration for planning, review, and grounded answer synthesis
+- optional remote and local LLM integration for planning, review, grounded answers, and branch selection
 - taxonomy-aware status reporting with depth, leaf-category, and redundant-link signals
 
 ## Quick Start
@@ -39,7 +39,11 @@ node ./bin/rrag.js status
 
 ## Optional LLM Mode
 
-The prototype now supports an optional OpenAI-compatible chat endpoint.
+The prototype now supports:
+
+- remote OpenAI-compatible chat endpoints
+- local Ollama servers
+- local `llama.cpp` HTTP servers
 
 Example:
 
@@ -48,6 +52,26 @@ export OPENAI_API_KEY=...
 node ./bin/rrag.js config set llm_enabled true
 node ./bin/rrag.js config set llm_model gpt-4.1-mini
 node ./bin/rrag.js update --apply
+```
+
+Ollama example:
+
+```bash
+node ./bin/rrag.js config set llm_enabled true
+node ./bin/rrag.js config set llm_provider ollama
+node ./bin/rrag.js config set llm_base_url http://127.0.0.1:11434
+node ./bin/rrag.js config set llm_model qwen2.5:7b
+node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
+```
+
+`llama.cpp` server example:
+
+```bash
+node ./bin/rrag.js config set llm_enabled true
+node ./bin/rrag.js config set llm_provider llama.cpp
+node ./bin/rrag.js config set llm_base_url http://127.0.0.1:8080/v1
+node ./bin/rrag.js config set llm_model local-model
+node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
 ```
 
 Relevant config keys:
@@ -88,6 +112,7 @@ Implemented today:
 - heuristic branch selection over category nodes before skill matching
 - heuristic nested category path inference such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`
 - pluggable branch selector with optional LLM-assisted branch choice
+- LLM-guided category traversal now works when a remote or local provider is configured
 - rebuild planning with conservative cleanup suggestions and executable safe actions
 - rebuild can now propose and execute removal of empty category directories
 - unlink operations now prune empty category directories so taxonomy cleanup leaves fewer empty shells
@@ -100,7 +125,7 @@ Implemented today:
 Still placeholder:
 
 - LLM planning
-- LLM-guided tree traversal for retrieval
+- fully semantic planner/executor behavior beyond branch selection
 - git commit-per-TODO execution and PR orchestration
 - git branch / commit orchestration during apply and rebuild
 

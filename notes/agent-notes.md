@@ -39,8 +39,10 @@ These are the highest-value missing pieces:
 
 1. LLM integration
 - an OpenAI-compatible model client now exists
+- the LLM client now also supports local Ollama and local `llama.cpp` HTTP servers
 - planner/review/answer synthesis can optionally use it
-- category traversal and semantic execution are still mostly heuristic
+- category traversal can now use LLM-guided branch selection when an LLM provider is configured
+- semantic execution is still mostly heuristic
 
 2. Git-native execution workflow
 - apply/rebuild do not yet create a branch per run
@@ -52,7 +54,7 @@ These are the highest-value missing pieces:
 
 3. Tree-guided retrieval
 - ask now traverses category nodes first and records traversal traces
-- branch selection is still heuristic rather than model-guided
+- branch selection can now be model-guided through the pluggable selector path
 - the branch selector is now isolated, so swapping heuristic selection for model-guided selection no longer requires rewriting traversal
 - category scoring now uses a normalized blend of label match, subtree-hint match, and question-token coverage instead of raw overlap only
 - heuristic planning now emits nested category paths such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`, rather than only flat top-level buckets
