@@ -6,6 +6,7 @@ import {
   readTodo,
   writeCommitArtifacts,
   writeChangesSummary,
+  writeDecisionSummary,
   updateRunManifest,
   writeReview,
   writeRunManifest,
@@ -73,6 +74,12 @@ async function applyUpdate(context) {
   await writeTodo(runPath, plan);
   await writePlan(runPath, plan);
   await writeReview(runPath, reviewText);
+  await writeDecisionSummary(runPath, stagedDecisions, {
+    mode: "update",
+    runId,
+    plannerMode,
+    plannerError
+  });
   await writeRunManifest(runPath, {
     mode: "update",
     run_id: runId,

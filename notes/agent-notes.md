@@ -16,6 +16,7 @@ The implementation is intentionally split into small layers:
 
 - `src/lib/planner.js`
   Heuristic stand-in for the future LLM planner. It decides whether staged material should create a new skill or update an existing one, and which categories to attach.
+  The LLM path now receives related skill excerpts and existing category inventory, which makes update-vs-create decisions much better grounded than plain summary-only prompts.
 
 - `src/lib/executor.js`
   Generic safe-action executor. This keeps execution separate from planning so the planner can later become LLM-backed without rewriting file operations.
@@ -27,6 +28,7 @@ The implementation is intentionally split into small layers:
   It now also appends `steps.jsonl` so each executed TODO item leaves behind a structured action trace.
   Those step traces now also roll up into `changes.md`, which is a much better handoff artifact for future commit and PR generation.
   The same trace now also feeds `commit-message.txt` and `pr-summary.md` drafts, so git-native execution has starter text available before we automate commits.
+  Update runs also emit `decisions.md`, which is the easiest place to inspect planner rationales without digging through `run.json`.
 
 - `src/lib/retrieval.js`
   Contains the current deterministic retrieval logic. This is the right place to later add category-level beam search and model-guided passage selection.

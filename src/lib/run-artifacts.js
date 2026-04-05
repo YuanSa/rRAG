@@ -65,6 +65,11 @@ export async function writeCommitArtifacts(runPath, metadata = {}) {
   await writeMarkdownArtifact(runPath, "pr-summary.md", prSummary);
 }
 
+export async function writeDecisionSummary(runPath, decisions, metadata = {}) {
+  const content = renderDecisionSummary(decisions, metadata);
+  return writeMarkdownArtifact(runPath, "decisions.md", content);
+}
+
 export async function writeSummary(runPath, summary) {
   const summaryPath = path.join(runPath, "summary.json");
   await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
@@ -402,4 +407,51 @@ function humanizeAction(action) {
     default:
       return `Apply ${action.replaceAll("_", " ")}`;
   }
+}
+
+function renderDecisionSummary(decisions, metadata) {
+  const lines = ["# Decisions", ""];
+  if (metadata.mode) {
+    lines.push(`- mode: ${metadata.mode}`);
+  }
+  if (metadata.runId) {
+    lines.push(`- run_id: ${metadata.runId}`);
+  }
+  if (metadata.plannerMode) {
+    lines.push(`- planner_mode: ${metadata.plannerMode}`);
+  }
+  if (metadata.plannerError) {
+    lines.push(`- planner_error: ${metadata.plannerError}`);
+  }
+  if (lines.length > 2) {
+    lines.push("");
+  }
+
+  if (!Array.isArray(decisions) || decisions.length === 0) {
+    lines.push("No decisions were recorded.");
+    return lines.join("\n");
+  }
+
+  for (const decision of decisions) {
+    lines.push(`## ${decision.source}`);
+    lines.push(`- type: ${decision.type}`);
+    if (decision.skillId) {
+      lines.push(`- skill_id: ${decision.skillId}`);
+    }
+    if (decision.title) {
+      lines.push(`- title: ${decision.title}`);
+    }
+    if (decision.categories?.length) {
+      lines.push(`- categories: ${decision.categories.join(", ")}`);
+    }
+    if (decision.summary) {
+      lines.push(`- summary: ${decision.summary}`);
+    }
+    if (decision.rationale) {
+      lines.push(`- rationale: ${decision.rationale}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n").trimEnd();
 }

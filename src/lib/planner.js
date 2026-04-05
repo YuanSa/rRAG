@@ -14,6 +14,8 @@ const CATEGORY_RULES = [
   { path: "Knowledge-Base/Maintenance", keywords: ["rebuild", "archive", "delete", "cleanup", "fallback"] },
   { path: "Prompting", keywords: ["prompt", "prompts", "instruction", "reasoning"] }
 ];
+const PLANNER_RELATED_SKILL_LIMIT = 4;
+const PLANNER_RELATED_CONTENT_CHARS = 1600;
 
 export async function buildUpdatePlan({ stagedTexts, skillSummaries, categoriesRoot, skillsRoot }) {
   return buildHeuristicUpdatePlan({ stagedTexts, skillSummaries, categoriesRoot, skillsRoot });
@@ -26,9 +28,18 @@ export async function buildUpdatePlanWithLlm({ stagedTexts, skillSummaries, cate
 
   try {
     const categoryMap = await collectSkillCategoryMap(categoriesRoot);
+    const plannerContext = await buildPlannerContext({ stagedTexts, skillSummaries, categoryMap, skillsRoot });
     const response = await llm.generateJson({
-      system: "You are a conservative knowledge base planning assistant. Prefer update only when the new material clearly belongs to the same core question. Prefer create when unsure. Keep categories short and reusable.",
-      user: buildPlannerPrompt(stagedTexts, skillSummaries, categoryMap),
+      system: [
+        "You are a conservative knowledge base planning assistant.",
+        "Plan how to integrate staged materials into a filesystem knowledge base.",
+        "Prefer update only when the new material clearly belongs to the same core question as an existing skill.",
+        "Prefer create when unsure.",
+        "Use short, reusable category paths.",
+        "When existing category paths already fit, reuse them instead of inventing new ones.",
+        "Use the related skill excerpts to decide whether a staged item should update an existing skill or become a new skill."
+      ].join(" "),
+      user: buildPlannerPrompt(plannerContext),
       schemaHint: JSON.stringify({
         decisions: [
           {
@@ -38,7 +49,8 @@ export async function buildUpdatePlanWithLlm({ stagedTexts, skillSummaries, cate
             title: "string",
             summary: "string",
             content: "full markdown skill content",
-            categories: ["Category", "Sub/Category"]
+            categories: ["Category", "Sub/Category"],
+            rationale: "short reason"
           }
         ]
       }, null, 2)
@@ -128,8 +140,20 @@ export async function buildUpdateReviewWithLlm({ stagedTexts, skillSummaries, st
 
   try {
     return await llm.generateText({
-      system: "You are a knowledge base review assistant. Review the proposed decisions conservatively and summarize risks or better alternatives in markdown.",
-      user: JSON.stringify({ stagedTexts: stagedTexts.map(item => item.relativePath), skillCount: skillSummaries.length, stagedDecisions }, null, 2)
+      system: [
+        "You are a knowledge base review assistant.",
+        "Review the proposed decisions conservatively.",
+        "Look for over-eager updates, weak category choices, or places where create would be safer than update.",
+        "Return concise markdown."
+      ].join(" "),
+      user: JSON.stringify({
+        stagedTexts: stagedTexts.map(item => ({
+          source: item.relativePath,
+          preview: excerptContent(item.content, 400)
+        })),
+        skillCount: skillSummaries.length,
+        stagedDecisions
+      }, null, 2)
     });
   } catch {
     return buildUpdateReview({ stagedTexts, skillSummaries, stagedDecisions });
@@ -216,6 +240,9 @@ export function buildUpdateReview({ stagedTexts, skillSummaries, stagedDecisions
     } else {
       lines.push(`- Create a new skill from \`${decision.source}\` and link it under: ${categories}`);
     }
+    if (decision.rationale) {
+      lines.push(`  rationale: ${decision.rationale}`);
+    }
   }
 
   lines.push("");
@@ -241,7 +268,8 @@ async function decideForStagedText(staged, skillSummaries, categoryMap, skillsRo
       content: appendUpdateSection(existingContent, staged.relativePath, normalizedBody),
       summary: mergeSummaries(match.summary, summary),
       categories: dedupe([...existingCategories, ...categories]),
-      source: staged.relativePath
+      source: staged.relativePath,
+      rationale: `Matched existing skill ${match.id} by overlapping title/summary tokens.`
     };
   }
 
@@ -251,7 +279,8 @@ async function decideForStagedText(staged, skillSummaries, categoryMap, skillsRo
     content,
     summary,
     categories,
-    source: staged.relativePath
+    source: staged.relativePath,
+    rationale: "No existing skill had a strong enough overlap score, so create a new skill."
   };
 }
 
@@ -376,19 +405,29 @@ function collapseCategoryPaths(paths) {
   return kept.length > 0 ? kept : [DEFAULT_CATEGORY];
 }
 
-function buildPlannerPrompt(stagedTexts, skillSummaries, categoryMap) {
-  return JSON.stringify({
-    stagedTexts: stagedTexts.map(item => ({
+async function buildPlannerContext({ stagedTexts, skillSummaries, categoryMap, skillsRoot }) {
+  const existingCategories = summarizeExistingCategories(skillSummaries, categoryMap);
+  const stagedItems = [];
+
+  for (const item of stagedTexts) {
+    const relatedSkills = await collectRelatedSkillsForPrompt(item, skillSummaries, categoryMap, skillsRoot);
+    stagedItems.push({
       source: item.relativePath,
-      content: item.content
-    })),
-    existingSkills: skillSummaries.map(skill => ({
-      id: skill.id,
-      title: skill.title,
-      summary: skill.summary,
-      categories: categoryMap.get(skill.id) ?? []
-    }))
-  }, null, 2);
+      proposedTitle: deriveTitle(item),
+      content: item.content,
+      relatedSkills
+    });
+  }
+
+  return {
+    stagedItems,
+    existingCategories,
+    existingSkillCount: skillSummaries.length
+  };
+}
+
+function buildPlannerPrompt(context) {
+  return JSON.stringify(context, null, 2);
 }
 
 function normalizeLlmDecision(decision, staged) {
@@ -396,8 +435,9 @@ function normalizeLlmDecision(decision, staged) {
   const summary = String(decision.summary || deriveSummary(staged.content));
   const content = String(decision.content || `# ${title}\n\n${staged.content.trim()}`);
   const rawCategories = Array.isArray(decision.categories) ? decision.categories : [DEFAULT_CATEGORY];
-  const categories = dedupe(rawCategories.map(item => String(item).trim()).filter(Boolean));
+  const categories = collapseCategoryPaths(rawCategories.map(item => String(item).trim()).filter(Boolean));
   const type = decision.type === "update_skill" ? "update_skill" : "create_skill";
+  const rationale = typeof decision.rationale === "string" ? decision.rationale.trim() : "";
 
   return {
     type,
@@ -406,6 +446,68 @@ function normalizeLlmDecision(decision, staged) {
     summary,
     content,
     categories: categories.length > 0 ? categories : [DEFAULT_CATEGORY],
-    source: staged.relativePath
+    source: staged.relativePath,
+    rationale
   };
+}
+
+async function collectRelatedSkillsForPrompt(staged, skillSummaries, categoryMap, skillsRoot) {
+  const title = deriveTitle(staged);
+  const body = staged.content.trim();
+  const matches = rankSkillMatches(title, body, skillSummaries)
+    .slice(0, PLANNER_RELATED_SKILL_LIMIT);
+
+  const related = [];
+  for (const match of matches) {
+    const fullContent = await safeReadSkillContent(skillsRoot, match.id);
+    related.push({
+      id: match.id,
+      title: match.title,
+      summary: match.summary,
+      categories: categoryMap.get(match.id) ?? [],
+      overlapScore: match.score,
+      contentExcerpt: excerptContent(fullContent, PLANNER_RELATED_CONTENT_CHARS)
+    });
+  }
+  return related;
+}
+
+function rankSkillMatches(title, body, skillSummaries) {
+  const haystack = `${title} ${body}`;
+  const targetTokens = tokenize(haystack);
+  return skillSummaries
+    .map(skill => ({
+      ...skill,
+      score: overlapScore(targetTokens, tokenize(`${skill.title} ${skill.summary}`))
+    }))
+    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
+}
+
+function summarizeExistingCategories(skillSummaries, categoryMap) {
+  const counts = new Map();
+  for (const skill of skillSummaries) {
+    const categories = categoryMap.get(skill.id) ?? [];
+    for (const categoryPath of categories) {
+      counts.set(categoryPath, (counts.get(categoryPath) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([path, count]) => ({ path, count }));
+}
+
+function excerptContent(content, maxChars) {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxChars - 3)}...`;
+}
+
+async function safeReadSkillContent(skillsRoot, skillId) {
+  try {
+    return await readSkillContent(skillsRoot, skillId);
+  } catch {
+    return "";
+  }
 }

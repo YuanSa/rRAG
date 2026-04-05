@@ -12,6 +12,7 @@ The current codebase provides:
 - executed runs now also persist `steps.jsonl`, a per-TODO action log for later diff/commit orchestration
 - executed runs now also generate `changes.md`, a readable change summary derived from the step log
 - executed runs now also generate `commit-message.txt` and `pr-summary.md` drafts from the same step log
+- update runs now also generate `decisions.md`, a readable record of planner decisions and rationales
 - run manifests with git environment metadata and parseable TODO items
 - ask runs persisted with `answer.md`, `run.json`, and `summary.json`
 - heuristic ask retrieval over skill summaries plus passage extraction
@@ -19,6 +20,7 @@ The current codebase provides:
 - traversal budgeting now respects `max_total_nodes` and records when a search is truncated
 - traversal now caches subtree hints during a run and exposes cache hit/miss signals in ask history
 - heuristic update planning that can create or update skills and add category links
+- LLM update planning now gets related skill excerpts, category reuse context, and decision rationales
 - soft-delete via archiving skills out of the active knowledge base
 - optional remote and local LLM integration for planning, review, grounded answers, and branch selection
 - taxonomy-aware status reporting with depth, leaf-category, and redundant-link signals
