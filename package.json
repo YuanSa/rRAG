@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node ./bin/rrag.js",
-    "check": "node ./bin/rrag.js --help"
+    "check": "node ./bin/rrag.js --help",
+    "demo:testcases": "node ./scripts/run-test-cases.mjs"
   },
   "engines": {
     "node": ">=18"

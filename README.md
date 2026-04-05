@@ -39,6 +39,24 @@ node ./bin/rrag.js runs
 node ./bin/rrag.js status
 ```
 
+## Demo Test Cases
+
+The fastest way to see the prototype work end-to-end is:
+
+```bash
+npm run demo:testcases
+```
+
+This runs in an isolated temporary workspace and will:
+
+- ingest the sample files under [examples/test-cases](/Users/yangzihan/Projects/rrag/examples/test-cases)
+- run `update --apply`
+- ask a couple of retrieval questions
+- run `rebuild --dry-run`
+- print `status` and recent `runs`
+
+If you want to run the same cases manually, see [examples/test-cases/README.md](/Users/yangzihan/Projects/rrag/examples/test-cases/README.md).
+
 ## Optional LLM Mode
 
 The prototype now supports:
