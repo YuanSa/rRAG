@@ -74,7 +74,7 @@ function resolveDataRoot(env) {
 }
 
 async function ensureDataGitignore(gitignorePath) {
-  const desired = ["archive/", "runs/", "staging/"].join("\n");
+  const desired = ["archive/", "runs/", "staging/", "config.json"].join("\n");
   try {
     const existing = await readFile(gitignorePath, "utf8");
     const normalized = existing.trim().replace(/\r\n/g, "\n");

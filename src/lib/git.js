@@ -76,7 +76,7 @@ export async function hasHeadCommit(cwd) {
   }
 }
 
-export async function ensureInitialCommit(cwd, files = [".gitignore", "config.json"]) {
+export async function ensureInitialCommit(cwd, files = [".gitignore"]) {
   if (await hasHeadCommit(cwd)) {
     return;
   }
