@@ -36,14 +36,14 @@ export async function handleAsk(args, context) {
       results,
       traversal: null
     });
-    if (context.config.ask_error_on_no_answer !== false) {
-      throw new Error(`ask could not find any matching skills for: ${question}`);
-    }
-    context.stdout.write("I don't know.\n");
-    if (explain) {
-      context.stdout.write("\n# Explain\n\n");
-      context.stdout.write("No relevant skill summaries or passages were matched.\n");
-    }
+    handleNoAnswerOutput({
+      behavior: context.config.ask_no_answer_behavior,
+      question,
+      explain,
+      stdout: context.stdout,
+      reason: "No relevant skill summaries or passages were matched.",
+      missingType: "matching skills"
+    });
     return;
   }
 
@@ -57,8 +57,16 @@ export async function handleAsk(args, context) {
     traversal
   });
 
-  if (isNoAnswer(answer) && context.config.ask_error_on_no_answer !== false) {
-    throw new Error(`ask could not derive an answer from the matched skills for: ${question}`);
+  if (isNoAnswer(answer)) {
+    handleNoAnswerOutput({
+      behavior: context.config.ask_no_answer_behavior,
+      question,
+      explain,
+      stdout: context.stdout,
+      reason: "The matched skills were insufficient to derive a grounded answer.",
+      missingType: "a grounded answer"
+    });
+    return;
   }
 
   context.stdout.write(`${answer}\n`);
@@ -125,6 +133,29 @@ function oneLine(text) {
 function isNoAnswer(answer) {
   const normalized = String(answer || "").trim().toLowerCase().replace(/[.!?]+$/g, "");
   return normalized === "i don't know";
+}
+
+function handleNoAnswerOutput({ behavior, question, explain, stdout, reason, missingType }) {
+  const mode = normalizeNoAnswerBehavior(behavior);
+  if (mode === "error") {
+    throw new Error(`ask could not find ${missingType} for: ${question}`);
+  }
+  if (mode === "reply") {
+    stdout.write("I don't know.\n");
+    if (explain) {
+      stdout.write("\n# Explain\n\n");
+      stdout.write(`${reason}\n`);
+    }
+    return;
+  }
+}
+
+function normalizeNoAnswerBehavior(value) {
+  const normalized = String(value || "error").trim().toLowerCase();
+  if (normalized === "reply" || normalized === "blank") {
+    return normalized;
+  }
+  return "error";
 }
 
 async function persistAskRun({ context, question, answer, results, traversal }) {

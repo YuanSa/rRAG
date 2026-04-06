@@ -5,8 +5,7 @@ import { loadConfig, saveConfig } from "../lib/config.js";
 const RECOMMENDED_CONFIG = {
   runs_enabled: false,
   archive_enabled: false,
-  ask_error_on_no_answer: true,
-  llm_enabled: true,
+  ask_no_answer_behavior: "error",
   llm_provider: "ollama",
   llm_base_url: "http://127.0.0.1:11434",
   llm_model: "qwen2.5:7b",
@@ -28,10 +27,6 @@ export async function handleInit(args, context) {
   await saveConfig(context.paths.config, next);
 
   context.stdout.write(`Initialized config at ${context.paths.config}\n`);
-  context.stdout.write(`- runs_enabled: ${next.runs_enabled ? "true" : "false"}\n`);
-  context.stdout.write(`- archive_enabled: ${next.archive_enabled ? "true" : "false"}\n`);
-  context.stdout.write(`- ask_error_on_no_answer: ${next.ask_error_on_no_answer ? "true" : "false"}\n`);
-  context.stdout.write(`- llm_enabled: ${next.llm_enabled ? "true" : "false"}\n`);
   context.stdout.write(`- llm_provider: ${next.llm_provider}\n`);
   context.stdout.write(`- llm_base_url: ${next.llm_base_url}\n`);
   context.stdout.write(`- llm_model: ${next.llm_model}\n`);
@@ -60,10 +55,6 @@ async function promptForConfig(startingConfig, context) {
       ? "Starting interactive config using your current settings as defaults.\n"
       : "Starting interactive config using recommended defaults for a fresh setup.\n");
 
-    const runsEnabled = await promptBoolean(rl, "Record run artifacts under runs/", startingConfig.runs_enabled);
-    const archiveEnabled = await promptBoolean(rl, "Archive consumed staging inputs after update --apply", startingConfig.archive_enabled);
-    const askErrorOnNoAnswer = await promptBoolean(rl, "Throw an error when ask cannot find or infer an answer", startingConfig.ask_error_on_no_answer);
-    const llmEnabled = await promptBoolean(rl, "Enable LLM features", startingConfig.llm_enabled);
     const provider = normalizeProvider(await promptText(rl, "LLM provider (ollama / llama.cpp / openai-compatible)", startingConfig.llm_provider));
 
     const llmModel = await promptText(rl, "Model name", startingConfig.llm_model);
@@ -72,10 +63,6 @@ async function promptForConfig(startingConfig, context) {
 
     return {
       ...startingConfig,
-      runs_enabled: runsEnabled,
-      archive_enabled: archiveEnabled,
-      ask_error_on_no_answer: askErrorOnNoAnswer,
-      llm_enabled: llmEnabled,
       llm_provider: provider,
       llm_model: llmModel,
       llm_base_url: llmBaseUrl,
@@ -96,22 +83,6 @@ async function promptText(rl, label, defaultValue) {
     return defaultValue ?? "";
   }
   return trimmed;
-}
-
-async function promptBoolean(rl, label, defaultValue) {
-  const suffix = defaultValue ? "Y/n" : "y/N";
-  const answer = await rl.question(`${label} [${suffix}]: `);
-  const normalized = answer.trim().toLowerCase();
-  if (!normalized) {
-    return Boolean(defaultValue);
-  }
-  if (["y", "yes", "true", "1"].includes(normalized)) {
-    return true;
-  }
-  if (["n", "no", "false", "0"].includes(normalized)) {
-    return false;
-  }
-  throw new Error(`invalid boolean response "${answer.trim()}"`);
 }
 
 function normalizeProvider(provider) {

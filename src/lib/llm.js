@@ -16,16 +16,15 @@ const DEFAULTS = {
 export function createLlmClient(config, env = process.env) {
   const provider = normalizeProvider(config.llm_provider);
   const providerDefaults = DEFAULTS[provider];
-  const enabled = Boolean(config.llm_enabled);
   const apiKeyEnv = config.llm_api_key_env || "OPENAI_API_KEY";
   const apiKey = env[apiKeyEnv];
   const model = config.llm_model || "gpt-4.1-mini";
   const baseUrl = normalizeBaseUrl(config.llm_base_url || providerDefaults.baseUrl);
   const requiresApiKey = providerDefaults.requiresApiKey;
-  const configured = enabled && Boolean(model) && Boolean(baseUrl) && (!requiresApiKey || Boolean(apiKey));
+  const configured = Boolean(model) && Boolean(baseUrl) && (!requiresApiKey || Boolean(apiKey));
 
   return {
-    enabled,
+    enabled: true,
     configured,
     provider,
     model,

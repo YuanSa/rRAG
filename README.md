@@ -123,29 +123,31 @@ node ./bin/rrag.js config --file ./config/rrag.local.json
 node ./bin/rrag.js config show
 ```
 
-The interactive `init` flow now also asks whether you want to:
+It now only asks for:
 
-- record run artifacts under `runs/`
-- archive consumed staging input under `archive/`
-- throw an error when `ask` cannot answer instead of returning `"I don't know"`
+- LLM provider
+- base URL
+- model
+- API key env var
 
-For fresh setups, the recommended defaults keep `runs` and `archive` disabled, while enabling errors for unanswered `ask` queries.
+Other config values keep their current values or recommended defaults.
+
+For fresh setups, the recommended defaults keep `runs` and `archive` disabled, set `ask_no_answer_behavior` to `error`, and use local Ollama defaults for the LLM connection.
 
 Relevant config keys:
 
-- `llm_enabled`
 - `llm_provider`
 - `llm_base_url`
 - `llm_model`
 - `llm_api_key_env`
 - `runs_enabled`
 - `archive_enabled`
-- `ask_error_on_no_answer`
+- `ask_no_answer_behavior` (`error`, `reply`, or `blank`)
 - `branch_max_per_level`
 - `branch_min_score`
 - `branch_score_margin`
 
-If the model is disabled or the request fails, the code falls back to deterministic heuristic behavior.
+If the configured model request fails, the code falls back to deterministic heuristic behavior where supported.
 
 ## Current Status
 

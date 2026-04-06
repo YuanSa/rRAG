@@ -25,6 +25,9 @@ export async function handleConfig(args, context) {
 
   const [action, key, value] = args;
   if (action === "set" && key && value !== undefined) {
+    if (key === "llm_enabled") {
+      throw new Error("llm_enabled is no longer configurable; configure provider, base url, model, and api key instead");
+    }
     const config = await loadConfig(context.paths.config);
     config[key] = parseConfigValue(value);
     await saveConfig(context.paths.config, config);
