@@ -74,7 +74,7 @@ rrag delete <skill_id>
 
 - `error`
 - `reply`
-- `blank`
+- `empty`
 
 ## 更多文档
 

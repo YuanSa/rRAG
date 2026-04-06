@@ -151,8 +151,11 @@ function handleNoAnswerOutput({ behavior, question, explain, stdout, reason, mis
 }
 
 function normalizeNoAnswerBehavior(value) {
-  const normalized = String(value || "error").trim().toLowerCase();
-  if (normalized === "reply" || normalized === "blank") {
+  const normalized = String(value || "empty").trim().toLowerCase();
+  if (normalized === "blank") {
+    return "empty";
+  }
+  if (normalized === "reply" || normalized === "empty") {
     return normalized;
   }
   return "error";

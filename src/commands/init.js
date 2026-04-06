@@ -5,7 +5,7 @@ import { loadConfig, saveConfig } from "../lib/config.js";
 const RECOMMENDED_CONFIG = {
   runs_enabled: false,
   archive_enabled: false,
-  ask_no_answer_behavior: "error",
+  ask_no_answer_behavior: "empty",
   llm_provider: "ollama",
   llm_base_url: "http://127.0.0.1:11434",
   llm_model: "qwen2.5:7b",

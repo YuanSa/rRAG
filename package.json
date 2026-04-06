@@ -2,10 +2,37 @@
   "name": "rrag",
   "version": "0.1.0",
   "description": "LLM-driven hierarchical knowledge system using reasoning instead of embeddings",
+  "license": "MIT",
+  "author": "YuanSa",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuanSa/rRAG.git"
+  },
+  "homepage": "https://github.com/YuanSa/rRAG",
+  "bugs": {
+    "url": "https://github.com/YuanSa/rRAG/issues"
+  },
+  "keywords": [
+    "cli",
+    "knowledge-base",
+    "rag",
+    "llm",
+    "agents",
+    "filesystem"
+  ],
   "type": "module",
   "bin": {
     "rrag": "./bin/rrag.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "doc",
+    "examples",
+    "scripts",
+    "package.json",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node ./bin/rrag.js",
     "check": "node ./bin/rrag.js --help",

@@ -40,7 +40,7 @@ rrag delete <skill_id>
 - Runtime data defaults to `~/.rrag`
 - Override with `RRAG_HOME=/some/path`
 - The runtime data directory is managed as its own git repository
-- `ask_no_answer_behavior` supports `error`, `reply`, and `blank`
+- `ask_no_answer_behavior` supports `error`, `reply`, and `empty`
 
 ## More
 

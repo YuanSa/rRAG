@@ -13,7 +13,7 @@ export const DEFAULT_CONFIG = {
   staging_max_total_files: 500,
   runs_enabled: true,
   archive_enabled: true,
-  ask_no_answer_behavior: "error",
+  ask_no_answer_behavior: "empty",
   llm_provider: "openai-compatible",
   llm_base_url: "https://api.openai.com/v1",
   llm_model: "gpt-4.1-mini",
@@ -52,8 +52,11 @@ function sanitizeConfig(config) {
 
 function normalizeAskNoAnswerBehavior(value) {
   const normalized = String(value || "error").trim().toLowerCase();
-  if (normalized === "error" || normalized === "reply" || normalized === "blank") {
+  if (normalized === "blank") {
+    return "empty";
+  }
+  if (normalized === "error" || normalized === "reply" || normalized === "empty") {
     return normalized;
   }
-  return "error";
+  return "empty";
 }
