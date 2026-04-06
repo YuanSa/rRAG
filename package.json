@@ -27,7 +27,7 @@
   "files": [
     "bin",
     "src",
-    "doc",
+    "docs",
     "examples",
     "scripts",
     "package.json",
