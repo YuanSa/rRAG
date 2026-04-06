@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Banner,
   Button,
@@ -31,7 +31,16 @@ import {
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
+const NAV_ITEMS = [
+  { key: "overview", label: "Overview", eyebrow: "Control room", icon: <IconDesktop /> },
+  { key: "ask", label: "Ask", eyebrow: "Grounded retrieval", icon: <IconComment /> },
+  { key: "update", label: "Update", eyebrow: "Stage and apply", icon: <IconArticle /> },
+  { key: "review", label: "Review", eyebrow: "Branch diff and merge", icon: <IconBranch /> },
+  { key: "operations", label: "Operations", eyebrow: "Status, runs, maintenance", icon: <IconTreeTriangleDown /> }
+];
+
 export function App() {
+  const [activeView, setActiveView] = useState("overview");
   const [meta, setMeta] = useState({ loading: true, data: null, error: "" });
   const [status, setStatus] = useState("Loading status...");
   const [runs, setRuns] = useState("Loading recent runs...");
@@ -46,6 +55,11 @@ export function App() {
   useEffect(() => {
     void bootstrap();
   }, []);
+
+  const activeItem = useMemo(
+    () => NAV_ITEMS.find(item => item.key === activeView) || NAV_ITEMS[0],
+    [activeView]
+  );
 
   async function bootstrap() {
     await Promise.all([refreshMeta(), refreshStatus(), refreshRuns()]);
@@ -206,177 +220,351 @@ export function App() {
     }
   }
 
-  const metaCard = renderMetaCard(meta);
-
   return (
-    <Layout className="app-shell">
-      <Header className="hero-shell">
-        <div className="hero-grid">
-          <div>
-            <Text className="eyebrow">rrag gui</Text>
-            <Title heading={2} className="hero-title">
-              React + Semi console for reasoning-native knowledge operations
-            </Title>
-            <Paragraph className="hero-paragraph">
-              Ask grounded questions, stage notes, apply updates, inspect branch diffs, and merge reviewed knowledge
-              updates from one local control room.
-            </Paragraph>
-            <Space wrap spacing={8}>
-              <Tag color="light-blue" prefixIcon={<IconLightningStroked />}>Ask + Explain</Tag>
-              <Tag color="green" prefixIcon={<IconBranch />}>Review before merge</Tag>
-              <Tag color="orange" prefixIcon={<IconTreeTriangleDown />}>Taxonomy-aware retrieval</Tag>
-            </Space>
-          </div>
-          <Card className="meta-card" shadows="hover">
-            {metaCard}
-          </Card>
+    <Layout className="admin-shell">
+      <aside className="sidebar-shell">
+        <div className="brand-block">
+          <Text className="eyebrow">rrag gui</Text>
+          <Title heading={4} className="brand-title">
+            Knowledge Console
+          </Title>
+          <Paragraph className="brand-copy">
+            A proper control plane for reasoning-native retrieval, staged updates, and review-first knowledge changes.
+          </Paragraph>
         </div>
-      </Header>
 
-      <Content className="content-shell">
-        <Banner
-          type="info"
-          icon={<IconDesktop />}
-          description="This console talks to the same local rrag data repo your CLI uses, so actions here and terminal actions stay in sync."
-          closeIcon={null}
-        />
-
-        <Row gutter={[16, 16]} className="main-grid">
-          <Col xs={24} xl={12}>
-            <Card
-              title={<CardTitle icon={<IconComment />} title="Ask" subtitle="Grounded retrieval with optional explain mode" />}
-              headerLine={false}
-              className="console-card accent-card"
+        <div className="nav-list">
+          {NAV_ITEMS.map(item => (
+            <button
+              type="button"
+              key={item.key}
+              className={`nav-item${item.key === activeView ? " nav-item-active" : ""}`}
+              onClick={() => setActiveView(item.key)}
             >
-              <Space vertical align="start" className="full-width" spacing="medium">
-                <TextArea
-                  value={question}
-                  onChange={value => setQuestion(value)}
-                  autosize={{ minRows: 4, maxRows: 10 }}
-                  placeholder="Ask something your local rrag knowledge base should answer..."
-                />
-                <div className="row-actions">
-                  <Space align="center">
-                    <Switch checked={explain} onChange={checked => setExplain(checked)} />
-                    <Text>Explain retrieval path</Text>
-                  </Space>
-                  <Button
-                    type="primary"
-                    theme="solid"
-                    icon={<IconLightningStroked />}
-                    loading={loadingKey === "ask"}
-                    onClick={() => void handleAsk()}
-                  >
-                    Ask rrag
-                  </Button>
-                </div>
-                <OutputBlock value={askOutput} />
-              </Space>
-            </Card>
-          </Col>
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-copy">
+                <span className="nav-label">{item.label}</span>
+                <span className="nav-eyebrow">{item.eyebrow}</span>
+              </span>
+            </button>
+          ))}
+        </div>
 
-          <Col xs={24} xl={12}>
-            <Card
-              title={<CardTitle icon={<IconArticle />} title="Update" subtitle="Stage notes directly into the shared workspace" />}
-              headerLine={false}
-              className="console-card"
-            >
-              <Space vertical align="start" className="full-width" spacing="medium">
-                <TextArea
-                  value={note}
-                  onChange={value => setNote(value)}
-                  autosize={{ minRows: 5, maxRows: 12 }}
-                  placeholder="Paste a note, fact, or short document to stage into rrag..."
-                />
-                <div className="row-actions">
-                  <Space wrap>
-                    <Button
-                      type="primary"
-                      theme="solid"
-                      icon={<IconChecklistStroked />}
-                      loading={loadingKey === "update-note"}
-                      onClick={() => void handleUpdate()}
-                    >
-                      Add to staging
-                    </Button>
-                    <Button
-                      icon={<IconPulse />}
-                      loading={loadingKey === "update-apply"}
-                      onClick={() => void handleApply()}
-                    >
-                      Apply staged update
-                    </Button>
-                  </Space>
-                </div>
-                <OutputBlock value={updateOutput} />
-              </Space>
-            </Card>
-          </Col>
+        <Card className="sidebar-summary" shadows="never">
+          {renderMetaSummary(meta)}
+        </Card>
+      </aside>
 
-          <Col xs={24} xl={12}>
-            <Card
-              title={<CardTitle icon={<IconBranch />} title="Review and merge" subtitle="Inspect the current update branch before it lands in main" />}
-              headerLine={false}
-              className="console-card"
-            >
-              <Space vertical align="start" className="full-width" spacing="medium">
-                <Space wrap>
-                  <Button icon={<IconRefresh />} loading={loadingKey === "update-review"} onClick={() => void handleReview()}>
-                    Load branch diff
-                  </Button>
-                  <Button type="secondary" theme="solid" loading={loadingKey === "update-merge"} onClick={() => void handleMerge()}>
-                    Merge into main
-                  </Button>
-                </Space>
-                <OutputBlock value={reviewOutput} />
-              </Space>
-            </Card>
-          </Col>
+      <Layout className="workspace-shell">
+        <Header className="workspace-header">
+          <div>
+            <Text className="header-kicker">{activeItem.eyebrow}</Text>
+            <Title heading={3} className="workspace-title">
+              {activeItem.label}
+            </Title>
+          </div>
+          <Space wrap spacing={8}>
+            <Tag color={meta.data?.llmConfigured ? "green" : "red"}>
+              {meta.data?.llmConfigured ? `LLM ${meta.data.llmProvider}` : "LLM not configured"}
+            </Tag>
+            <Tag color={meta.data?.runsEnabled ? "blue" : "grey"}>
+              Runs {meta.data?.runsEnabled ? "on" : "off"}
+            </Tag>
+            <Tag color={meta.data?.archiveEnabled ? "amber" : "grey"}>
+              Archive {meta.data?.archiveEnabled ? "on" : "off"}
+            </Tag>
+          </Space>
+        </Header>
 
-          <Col xs={24} xl={12}>
-            <Card
-              title={<CardTitle icon={<IconPulse />} title="Repository state" subtitle="Inspect the local knowledge repo and run lightweight maintenance" />}
-              headerLine={false}
-              className="console-card"
-            >
-              <Space vertical align="start" className="full-width" spacing="medium">
-                <Space wrap>
-                  <Button icon={<IconRefresh />} loading={loadingKey === "status"} onClick={() => void refreshStatus()}>
-                    Refresh status
-                  </Button>
-                  <Button loading={loadingKey === "rebuild"} onClick={() => void handleRebuild()}>
-                    Rebuild dry run
-                  </Button>
-                  <Button type="danger" theme="borderless" loading={loadingKey === "clear"} onClick={() => void handleClear()}>
-                    Clear caches
-                  </Button>
-                </Space>
-                <OutputBlock value={status} />
-              </Space>
-            </Card>
-          </Col>
+        <Content className="workspace-content">
+          <Banner
+            type="info"
+            icon={<IconDesktop />}
+            description="This console operates on the same shared rrag data repo as the CLI, so terminal and GUI workflows stay synchronized."
+            closeIcon={null}
+          />
 
-          <Col span={24}>
-            <Card
-              title={<CardTitle icon={<IconTreeTriangleDown />} title="Recent runs" subtitle="The latest ask / update / rebuild execution history" />}
-              headerLine={false}
-              className="console-card"
-              extra={
-                <Button icon={<IconRefresh />} loading={loadingKey === "runs"} onClick={() => void refreshRuns()}>
-                  Refresh runs
-                </Button>
-              }
-            >
-              <OutputBlock value={runs} tall />
-            </Card>
-          </Col>
-        </Row>
-      </Content>
+          {activeView === "overview" && (
+            <OverviewView
+              meta={meta}
+              status={status}
+              runs={runs}
+              onRefreshMeta={() => void refreshMeta()}
+              onRefreshStatus={() => void refreshStatus()}
+              onRefreshRuns={() => void refreshRuns()}
+              onNavigate={setActiveView}
+            />
+          )}
+
+          {activeView === "ask" && (
+            <AskView
+              question={question}
+              setQuestion={setQuestion}
+              explain={explain}
+              setExplain={setExplain}
+              askOutput={askOutput}
+              loading={loadingKey === "ask"}
+              onAsk={() => void handleAsk()}
+            />
+          )}
+
+          {activeView === "update" && (
+            <UpdateView
+              note={note}
+              setNote={setNote}
+              updateOutput={updateOutput}
+              loadingKey={loadingKey}
+              onUpdate={() => void handleUpdate()}
+              onApply={() => void handleApply()}
+            />
+          )}
+
+          {activeView === "review" && (
+            <ReviewView
+              reviewOutput={reviewOutput}
+              loadingKey={loadingKey}
+              onReview={() => void handleReview()}
+              onMerge={() => void handleMerge()}
+            />
+          )}
+
+          {activeView === "operations" && (
+            <OperationsView
+              status={status}
+              runs={runs}
+              loadingKey={loadingKey}
+              onRefreshStatus={() => void refreshStatus()}
+              onRefreshRuns={() => void refreshRuns()}
+              onRebuild={() => void handleRebuild()}
+              onClear={() => void handleClear()}
+            />
+          )}
+        </Content>
+      </Layout>
     </Layout>
   );
 }
 
-function renderMetaCard(meta) {
+function OverviewView({ meta, status, runs, onRefreshMeta, onRefreshStatus, onRefreshRuns, onNavigate }) {
+  return (
+    <div className="page-stack">
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
+          <MetricCard
+            title="Data root"
+            value={meta.data?.dataRoot || "Loading..."}
+            action={<Button icon={<IconRefresh />} onClick={onRefreshMeta}>Refresh meta</Button>}
+          />
+        </Col>
+        <Col xs={24} md={8}>
+          <MetricCard
+            title="Model"
+            value={meta.data ? `${meta.data.llmProvider} · ${meta.data.llmModel}` : "Loading..."}
+            action={<Tag color={meta.data?.llmConfigured ? "green" : "red"}>{meta.data?.llmConfigured ? "configured" : "not configured"}</Tag>}
+          />
+        </Col>
+        <Col xs={24} md={8}>
+          <MetricCard
+            title="Run recording"
+            value={meta.data ? `runs ${meta.data.runsEnabled ? "on" : "off"} · archive ${meta.data.archiveEnabled ? "on" : "off"}` : "Loading..."}
+            action={<Tag color="light-blue">shared repo</Tag>}
+          />
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={8}>
+          <QuickActionCard
+            icon={<IconComment />}
+            title="Ask something"
+            description="Use the retrieval workspace when you want an answer or want to inspect the explain trace."
+            buttonText="Open Ask"
+            onClick={() => onNavigate("ask")}
+          />
+        </Col>
+        <Col xs={24} xl={8}>
+          <QuickActionCard
+            icon={<IconArticle />}
+            title="Stage and apply knowledge"
+            description="Move into the update workspace to stage notes and apply them into the shared knowledge base."
+            buttonText="Open Update"
+            onClick={() => onNavigate("update")}
+          />
+        </Col>
+        <Col xs={24} xl={8}>
+          <QuickActionCard
+            icon={<IconBranch />}
+            title="Review branch changes"
+            description="Inspect the update branch diff and merge it back to main from the review workspace."
+            buttonText="Open Review"
+            onClick={() => onNavigate("review")}
+          />
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={12}>
+          <Card
+            className="console-card"
+            title={<CardTitle icon={<IconPulse />} title="Status snapshot" subtitle="A live snapshot of the knowledge repo health" />}
+            extra={<Button icon={<IconRefresh />} onClick={onRefreshStatus}>Refresh</Button>}
+          >
+            <OutputBlock value={status} />
+          </Card>
+        </Col>
+        <Col xs={24} xl={12}>
+          <Card
+            className="console-card"
+            title={<CardTitle icon={<IconTreeTriangleDown />} title="Recent runs" subtitle="The latest ask, update, and rebuild activity" />}
+            extra={<Button icon={<IconRefresh />} onClick={onRefreshRuns}>Refresh</Button>}
+          >
+            <OutputBlock value={runs} />
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
+}
+
+function AskView({ question, setQuestion, explain, setExplain, askOutput, loading, onAsk }) {
+  return (
+    <Card
+      className="console-card accent-card"
+      title={<CardTitle icon={<IconComment />} title="Ask" subtitle="Grounded retrieval with optional explain mode" />}
+    >
+      <Space vertical align="start" className="full-width" spacing="medium">
+        <TextArea
+          value={question}
+          onChange={value => setQuestion(value)}
+          autosize={{ minRows: 5, maxRows: 12 }}
+          placeholder="Ask something your local rrag knowledge base should answer..."
+        />
+        <div className="row-actions">
+          <Space align="center">
+            <Switch checked={explain} onChange={checked => setExplain(checked)} />
+            <Text>Explain retrieval path</Text>
+          </Space>
+          <Button type="primary" theme="solid" icon={<IconLightningStroked />} loading={loading} onClick={onAsk}>
+            Ask rrag
+          </Button>
+        </div>
+        <OutputBlock value={askOutput} tall />
+      </Space>
+    </Card>
+  );
+}
+
+function UpdateView({ note, setNote, updateOutput, loadingKey, onUpdate, onApply }) {
+  return (
+    <div className="page-stack">
+      <Card
+        className="console-card"
+        title={<CardTitle icon={<IconArticle />} title="Stage note" subtitle="Add raw material into staging before running the apply flow" />}
+      >
+        <Space vertical align="start" className="full-width" spacing="medium">
+          <TextArea
+            value={note}
+            onChange={value => setNote(value)}
+            autosize={{ minRows: 8, maxRows: 16 }}
+            placeholder="Paste a note, fact, or short document to stage into rrag..."
+          />
+          <div className="row-actions">
+            <Text type="tertiary">You can stage multiple notes before applying them into the active update branch.</Text>
+            <Button
+              type="primary"
+              theme="solid"
+              icon={<IconChecklistStroked />}
+              loading={loadingKey === "update-note"}
+              onClick={onUpdate}
+            >
+              Add to staging
+            </Button>
+          </div>
+        </Space>
+      </Card>
+
+      <Card
+        className="console-card"
+        title={<CardTitle icon={<IconPulse />} title="Apply staged update" subtitle="Run planner, executor, validation, and data-repo commit flow" />}
+        extra={
+          <Button icon={<IconPulse />} loading={loadingKey === "update-apply"} onClick={onApply}>
+            Apply staged update
+          </Button>
+        }
+      >
+        <OutputBlock value={updateOutput} tall />
+      </Card>
+    </div>
+  );
+}
+
+function ReviewView({ reviewOutput, loadingKey, onReview, onMerge }) {
+  return (
+    <div className="page-stack">
+      <Card
+        className="console-card"
+        title={<CardTitle icon={<IconBranch />} title="Review current update branch" subtitle="Inspect the diff against main before promoting it" />}
+        extra={
+          <Space>
+            <Button icon={<IconRefresh />} loading={loadingKey === "update-review"} onClick={onReview}>
+              Load branch diff
+            </Button>
+            <Button type="secondary" theme="solid" loading={loadingKey === "update-merge"} onClick={onMerge}>
+              Merge into main
+            </Button>
+          </Space>
+        }
+      >
+        <OutputBlock value={reviewOutput} tall />
+      </Card>
+    </div>
+  );
+}
+
+function OperationsView({ status, runs, loadingKey, onRefreshStatus, onRefreshRuns, onRebuild, onClear }) {
+  return (
+    <Row gutter={[16, 16]}>
+      <Col xs={24} xl={12}>
+        <Card
+          className="console-card"
+          title={<CardTitle icon={<IconPulse />} title="Repository status" subtitle="Health, topology, LLM mode, and repo-level counters" />}
+          extra={
+            <Space>
+              <Button icon={<IconRefresh />} loading={loadingKey === "status"} onClick={onRefreshStatus}>
+                Refresh
+              </Button>
+              <Button loading={loadingKey === "rebuild"} onClick={onRebuild}>
+                Rebuild dry run
+              </Button>
+            </Space>
+          }
+        >
+          <OutputBlock value={status} tall />
+        </Card>
+      </Col>
+      <Col xs={24} xl={12}>
+        <Card
+          className="console-card"
+          title={<CardTitle icon={<IconTreeTriangleDown />} title="Run history" subtitle="Recent execution history across ask, update, and rebuild" />}
+          extra={
+            <Space>
+              <Button icon={<IconRefresh />} loading={loadingKey === "runs"} onClick={onRefreshRuns}>
+                Refresh
+              </Button>
+              <Button type="danger" theme="borderless" loading={loadingKey === "clear"} onClick={onClear}>
+                Clear caches
+              </Button>
+            </Space>
+          }
+        >
+          <OutputBlock value={runs} tall />
+        </Card>
+      </Col>
+    </Row>
+  );
+}
+
+function renderMetaSummary(meta) {
   if (meta.loading) {
     return (
       <div className="meta-loading">
@@ -392,18 +580,47 @@ function renderMetaCard(meta) {
   const data = meta.data;
   return (
     <Space vertical spacing="medium" align="start" className="full-width">
-      <Space wrap spacing={8}>
-        <Tag color={data.llmConfigured ? "green" : "red"}>
-          {data.llmConfigured ? `LLM: ${data.llmProvider}` : "LLM not configured"}
-        </Tag>
-        <Tag color={data.runsEnabled ? "blue" : "grey"}>Runs: {data.runsEnabled ? "on" : "off"}</Tag>
-        <Tag color={data.archiveEnabled ? "amber" : "grey"}>Archive: {data.archiveEnabled ? "on" : "off"}</Tag>
-      </Space>
-      <Divider margin="8px" />
+      <Text strong>Current workspace</Text>
+      <Tag color={data.llmConfigured ? "green" : "red"}>
+        {data.llmConfigured ? `LLM ${data.llmProvider}` : "LLM not configured"}
+      </Tag>
+      <Divider margin="6px" />
       <MetaLine label="Data root" value={data.dataRoot} />
-      <MetaLine label="Provider" value={data.llmProvider} />
       <MetaLine label="Model" value={data.llmModel} />
+      <MetaLine label="Runs" value={data.runsEnabled ? "enabled" : "disabled"} />
+      <MetaLine label="Archive" value={data.archiveEnabled ? "enabled" : "disabled"} />
     </Space>
+  );
+}
+
+function MetricCard({ title, value, action }) {
+  return (
+    <Card className="metric-card" shadows="hover">
+      <Space vertical align="start" spacing="medium" className="full-width">
+        <Text type="tertiary">{title}</Text>
+        <Text strong className="metric-value">
+          {value}
+        </Text>
+        {action}
+      </Space>
+    </Card>
+  );
+}
+
+function QuickActionCard({ icon, title, description, buttonText, onClick }) {
+  return (
+    <Card className="console-card quick-card" shadows="hover">
+      <Space vertical align="start" spacing="medium">
+        <span className="quick-card-icon">{icon}</span>
+        <div>
+          <Title heading={5}>{title}</Title>
+          <Paragraph className="quick-card-copy">{description}</Paragraph>
+        </div>
+        <Button type="primary" theme="light" onClick={onClick}>
+          {buttonText}
+        </Button>
+      </Space>
+    </Card>
   );
 }
 
