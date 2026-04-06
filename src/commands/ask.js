@@ -3,7 +3,9 @@ import { synthesizeGroundedAnswer } from "../lib/answer.js";
 import { createRunDirectory, writeMarkdownArtifact, writeRunManifest, writeSummary } from "../lib/run-artifacts.js";
 
 export async function handleAsk(args, context) {
-  const question = args.join(" ").trim();
+  const explain = args.includes("--explain");
+  const filteredArgs = args.filter(arg => arg !== "--explain");
+  const question = filteredArgs.join(" ").trim();
   if (!question) {
     throw new Error('ask requires a question, e.g. rrag ask "What is ...?"');
   }
@@ -22,9 +24,6 @@ export async function handleAsk(args, context) {
     branchScoreMargin: context.config.branch_score_margin
   });
 
-  context.stdout.write(`# Ask\n\n`);
-  context.stdout.write(`Question: ${question}\n`);
-
   if (results.length === 0) {
     await persistAskRun({
       context,
@@ -33,8 +32,11 @@ export async function handleAsk(args, context) {
       results,
       traversal: null
     });
-    context.stdout.write(`\nI don't know.\n`);
-    context.stdout.write("No relevant skill summaries or passages were matched by the current heuristic retriever.\n");
+    context.stdout.write("I don't know.\n");
+    if (explain) {
+      context.stdout.write("\n# Explain\n\n");
+      context.stdout.write("No relevant skill summaries or passages were matched.\n");
+    }
     return;
   }
 
@@ -48,8 +50,15 @@ export async function handleAsk(args, context) {
     traversal
   });
 
+  context.stdout.write(`${answer}\n`);
+
+  if (!explain) {
+    return;
+  }
+
+  context.stdout.write("\n# Explain\n\n");
+  context.stdout.write(`Question: ${question}\n`);
   context.stdout.write(`Matched skills: ${results.length}\n\n`);
-  context.stdout.write(`Answer: ${answer}\n\n`);
   if (traversal?.visited?.length) {
     context.stdout.write("Traversal:\n");
     for (const node of traversal.visited) {
@@ -67,6 +76,11 @@ export async function handleAsk(args, context) {
     }
     context.stdout.write("\n");
   }
+
+  context.stdout.write("Reasoning summary:\n");
+  context.stdout.write("- The final answer is grounded only in the matched skills and extracted passages below.\n");
+  context.stdout.write("- Intermediate traversal details are shown for auditability, not as a full hidden chain of thought.\n\n");
+
   for (const result of results) {
     context.stdout.write(`## ${result.title}\n`);
     context.stdout.write(`- skill_id: ${result.skillId}\n`);

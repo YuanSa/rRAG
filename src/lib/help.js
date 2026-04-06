@@ -8,6 +8,7 @@ Usage:
   rrag update --review
   rrag update --merge
   rrag ask "<question>"
+  rrag ask --explain "<question>"
   rrag rebuild [--dry-run]
   rrag resume <run_id>
   rrag runs [limit]
@@ -24,6 +25,7 @@ Notes:
   - update --apply creates or reuses an update branch, consumes staging/, and commits data changes
   - update --review shows the current branch diff against main in the data repo
   - update --merge merges the current update branch into main in the data repo
+  - ask prints only the final answer by default; add --explain to include retrieval and evidence details
   - clear removes staging/, runs/, and archive/ under the shared data directory
 `;
 }
