@@ -184,71 +184,18 @@ RRAG_HOME=~/.rrag-demo rrag status
 
 ## 常见配置项
 
-- `llm_provider`
-- `llm_base_url`
-- `llm_model`
-- `llm_api_key_env`
-- `runs_enabled`
-- `archive_enabled`
-- `ask_no_answer_behavior`
-- `branch_max_per_level`
-- `branch_min_score`
-- `branch_score_margin`
-
-其中 `ask_no_answer_behavior` 支持：
-
-- `error`
-- `reply`
-- `empty`
-
-更具体一点说：
-
-- `llm_provider`
-  指定模型服务类型。当前支持：
-  - `ollama`
-  - `llama.cpp`
-  - `openai-compatible`
-
-- `llm_base_url`
-  指定模型服务地址。
-  例如：
-  - Ollama 常见是 `http://127.0.0.1:11434`
-  - `llama.cpp` 常见是 `http://127.0.0.1:8080/v1`
-  - OpenAI-compatible 则可能是某个远程 API 地址
-
-- `llm_model`
-  指定实际使用的模型名。例如：
-  - `qwen2.5:7b`
-  - `gpt-4.1-mini`
-
-- `llm_api_key_env`
-  指定从哪个环境变量读取 API key。
-  如果你使用的是本地 Ollama，一般这个值虽然可以保留，但通常不会真的用到。
-
-- `runs_enabled`
-  是否记录运行过程到 `runs/`。
-  打开后更方便调试、回看 planner / ask 过程；关闭后更干净。
-
-- `archive_enabled`
-  是否在 `update --apply` 后把本次消费过的 `staging/` 输入归档到 `archive/`。
-  如果你更在意可追溯性，可以打开；如果你只想保持目录简洁，可以关闭。
-
-- `ask_no_answer_behavior`
-  控制 `ask` 在没有匹配到 skill，或无法得出最终答案时的行为：
-  - `error`：直接抛错
-  - `reply`：输出 `I don't know.`
-  - `empty`：不输出任何内容
-
-- `branch_max_per_level`
-  限制检索时每一层分类树最多继续展开多少个分支。
-  值越大，召回范围越宽；值越小，检索越保守。
-
-- `branch_min_score`
-  分类分支最低相关性阈值。低于这个分值的分支不会继续展开。
-
-- `branch_score_margin`
-  控制“与当前最佳分支相差多少仍然可以继续保留”。
-  值越大，越容易保留多个分支；值越小，越偏向只走最强分支。
+| 配置项 | 说明 | 常见值 / 示例 |
+| --- | --- | --- |
+| `llm_provider` | 指定模型服务类型。 | `ollama` / `llama.cpp` / `openai-compatible` |
+| `llm_base_url` | 指定模型服务地址。 | `http://127.0.0.1:11434` / `http://127.0.0.1:8080/v1` |
+| `llm_model` | 指定实际使用的模型名。 | `qwen2.5:7b` / `gpt-4.1-mini` |
+| `llm_api_key_env` | 指定从哪个环境变量读取 API key。本地 Ollama 一般不会真的用到，但可以保留。 | `OPENAI_API_KEY` |
+| `runs_enabled` | 是否记录运行过程到 `runs/`。打开后更方便调试和回看 planner / ask 过程；关闭后更干净。 | `true` / `false` |
+| `archive_enabled` | 是否在 `update --apply` 后把消费过的 `staging/` 输入归档到 `archive/`。 | `true` / `false` |
+| `ask_no_answer_behavior` | 控制 `ask` 在没有匹配到 skill，或无法得出最终答案时的行为。 | `error` / `reply` / `empty` |
+| `branch_max_per_level` | 限制检索时每一层分类树最多继续展开多少个分支。值越大，召回范围越宽；值越小，检索越保守。 | `3` |
+| `branch_min_score` | 分类分支最低相关性阈值。低于这个分值的分支不会继续展开。 | `1` |
+| `branch_score_margin` | 控制“与当前最佳分支相差多少仍然可以继续保留”。值越大，越容易保留多个分支；值越小，越偏向只走最强分支。 | `3` |
 
 ## 全部命令
 

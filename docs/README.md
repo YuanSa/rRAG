@@ -199,71 +199,18 @@ This directory is initialized as its own git repository, separate from the sourc
 
 ## Important Config Keys
 
-- `llm_provider`
-- `llm_base_url`
-- `llm_model`
-- `llm_api_key_env`
-- `runs_enabled`
-- `archive_enabled`
-- `ask_no_answer_behavior`
-- `branch_max_per_level`
-- `branch_min_score`
-- `branch_score_margin`
-
-`ask_no_answer_behavior` supports:
-
-- `error`
-- `reply`
-- `empty`
-
-More concretely:
-
-- `llm_provider`
-  Chooses the model backend. Current supported values:
-  - `ollama`
-  - `llama.cpp`
-  - `openai-compatible`
-
-- `llm_base_url`
-  The endpoint for the model service.
-  Typical examples:
-  - Ollama: `http://127.0.0.1:11434`
-  - `llama.cpp`: `http://127.0.0.1:8080/v1`
-  - OpenAI-compatible: your remote API base URL
-
-- `llm_model`
-  The actual model name to use, for example:
-  - `qwen2.5:7b`
-  - `gpt-4.1-mini`
-
-- `llm_api_key_env`
-  The environment variable used to read the API key.
-  For local Ollama, this usually remains unused, but it can still stay configured.
-
-- `runs_enabled`
-  Whether to record execution traces under `runs/`.
-  Enable it if you want better observability and debugging; disable it if you want a cleaner data directory.
-
-- `archive_enabled`
-  Whether `update --apply` should archive consumed `staging/` input into `archive/`.
-  Enable it for traceability; disable it if you prefer a simpler working directory.
-
-- `ask_no_answer_behavior`
-  Controls what `ask` does when no skill matches, or when no grounded answer can be derived:
-  - `error`: throw an error
-  - `reply`: print `I don't know.`
-  - `empty`: print nothing
-
-- `branch_max_per_level`
-  Limits how many category branches retrieval can continue exploring at each tree level.
-  Higher values widen recall; lower values make retrieval more conservative.
-
-- `branch_min_score`
-  The minimum relevance score a category branch must have before it is explored further.
-
-- `branch_score_margin`
-  Controls how far a branch may fall behind the best-scoring branch while still being kept.
-  Higher values keep more branches alive; lower values favor the strongest branch only.
+| Key | Description | Common values / examples |
+| --- | --- | --- |
+| `llm_provider` | Chooses the model backend. | `ollama` / `llama.cpp` / `openai-compatible` |
+| `llm_base_url` | The endpoint for the model service. | `http://127.0.0.1:11434` / `http://127.0.0.1:8080/v1` |
+| `llm_model` | The actual model name to use. | `qwen2.5:7b` / `gpt-4.1-mini` |
+| `llm_api_key_env` | The environment variable used to read the API key. For local Ollama this usually remains unused, but it can still stay configured. | `OPENAI_API_KEY` |
+| `runs_enabled` | Whether to record execution traces under `runs/`. Enable it for observability and debugging; disable it for a cleaner data directory. | `true` / `false` |
+| `archive_enabled` | Whether `update --apply` should archive consumed `staging/` input into `archive/`. | `true` / `false` |
+| `ask_no_answer_behavior` | Controls what `ask` does when no skill matches, or when no grounded answer can be derived. | `error` / `reply` / `empty` |
+| `branch_max_per_level` | Limits how many category branches retrieval can continue exploring at each tree level. Higher values widen recall; lower values make retrieval more conservative. | `3` |
+| `branch_min_score` | The minimum relevance score a category branch must have before it is explored further. | `1` |
+| `branch_score_margin` | Controls how far a branch may fall behind the best-scoring branch while still being kept. Higher values keep more branches alive; lower values favor the strongest branch only. | `3` |
 
 ## Full Command List
 
