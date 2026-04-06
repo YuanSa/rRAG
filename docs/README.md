@@ -214,25 +214,25 @@ This directory is initialized as its own git repository, separate from the sourc
 
 ## Full Command List
 
-```bash
-rrag init
-rrag update "<text>"
-rrag update --file <path>
-rrag update --apply
-rrag update --review
-rrag update --merge
-rrag ask "<question>"
-rrag ask --explain "<question>"
-rrag rebuild [--dry-run]
-rrag config show
-rrag config set <key> <value>
-rrag config --file <path>
-rrag status
-rrag runs [limit]
-rrag resume <run_id>
-rrag clear
-rrag delete <skill_id>
-```
+| Command | What it does | Typical use |
+| --- | --- | --- |
+| `rrag init` | Interactively initialize model connection settings. | First-time setup, switching model backends |
+| `rrag update "<text>"` | Add a text note into `staging/`. | Teaching one small fact or note |
+| `rrag update --file <path>` | Copy a file or directory into `staging/`. | Learning from existing docs or note folders |
+| `rrag update --apply` | Apply staged input into the knowledge base. | Finish a knowledge update |
+| `rrag update --review` | Show the current update branch diff against `main`. | Review changes before merging |
+| `rrag update --merge` | Merge the current update branch back into `main`. | Finalize a reviewed update |
+| `rrag ask "<question>"` | Ask a question and print only the final answer. | Normal daily usage |
+| `rrag ask --explain "<question>"` | Ask a question and include retrieval explanation, matched skills, and evidence passages. | Debug retrieval behavior |
+| `rrag rebuild [--dry-run]` | Rebuild or preview taxonomy maintenance actions. | Clean up or reorganize the knowledge base |
+| `rrag config show` | Show the active config. | Verify current settings |
+| `rrag config set <key> <value>` | Update one config value. | Fine-tune behavior |
+| `rrag config --file <path>` | Import config from a JSON file. | Load a prepared config in one step |
+| `rrag status` | Show overall repository status. | Quick health check |
+| `rrag runs [limit]` | Show recent run history. | Inspect recent executions |
+| `rrag resume <run_id>` | Resume an unfinished run. | Continue an interrupted flow |
+| `rrag clear` | Clear cache, run records, and archive artifacts. | Reset temporary state |
+| `rrag delete <skill_id>` | Soft-delete a skill. | Remove outdated or incorrect knowledge |
 
 ## More
 

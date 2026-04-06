@@ -199,25 +199,25 @@ RRAG_HOME=~/.rrag-demo rrag status
 
 ## 全部命令
 
-```bash
-rrag init
-rrag update "<text>"
-rrag update --file <path>
-rrag update --apply
-rrag update --review
-rrag update --merge
-rrag ask "<question>"
-rrag ask --explain "<question>"
-rrag rebuild [--dry-run]
-rrag config show
-rrag config set <key> <value>
-rrag config --file <path>
-rrag status
-rrag runs [limit]
-rrag resume <run_id>
-rrag clear
-rrag delete <skill_id>
-```
+| 命令 | 作用 | 常见场景 |
+| --- | --- | --- |
+| `rrag init` | 交互式初始化模型连接配置。 | 第一次使用、切换模型服务 |
+| `rrag update "<text>"` | 把一段文本加入 `staging/`。 | 快速记住一条事实或笔记 |
+| `rrag update --file <path>` | 把文件或目录复制到 `staging/`。 | 从现有文档、笔记目录学习 |
+| `rrag update --apply` | 执行学习，把 `staging/` 的内容整理进知识库。 | 完成一次知识更新 |
+| `rrag update --review` | 查看当前 update 分支相对 `main` 的 diff。 | 合并前检查本次知识变更 |
+| `rrag update --merge` | 把当前 update 分支合并回 `main`。 | 确认无误后正式落库 |
+| `rrag ask "<question>"` | 提问，只输出最终答案。 | 日常使用 |
+| `rrag ask --explain "<question>"` | 提问并输出检索解释、命中 skill 和证据片段。 | 调试召回过程 |
+| `rrag rebuild [--dry-run]` | 重建或预览分类结构调整。 | 整理知识库、清理分类漂移 |
+| `rrag config show` | 查看当前配置。 | 排查配置是否生效 |
+| `rrag config set <key> <value>` | 设置单个配置项。 | 微调行为 |
+| `rrag config --file <path>` | 从 JSON 文件导入配置。 | 批量导入现成配置 |
+| `rrag status` | 查看知识库整体状态。 | 日常巡检 |
+| `rrag runs [limit]` | 查看最近的 run 历史。 | 回看近期执行记录 |
+| `rrag resume <run_id>` | 恢复一个未完成 run。 | 继续被中断的执行流程 |
+| `rrag clear` | 清理缓存、运行记录和归档内容。 | 清空临时产物 |
+| `rrag delete <skill_id>` | 软删除一个 skill。 | 移除旧知识、错误知识 |
 
 ## 更多文档
 
