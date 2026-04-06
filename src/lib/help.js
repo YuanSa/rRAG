@@ -10,12 +10,15 @@ Usage:
   rrag ask "<question>"
   rrag ask --explain "<question>"
   rrag rebuild [--dry-run]
+  rrag init [--ollama|--llama-cpp|--openai] [--model <name>] [--base-url <url>] [--api-key-env <env>] [--enable-llm|--disable-llm]
   rrag resume <run_id>
   rrag runs [limit]
   rrag delete <skill_id>
   rrag clear
   rrag status
   rrag config set <key> <value>
+  rrag config show
+  rrag config --file <path>
 
 Notes:
   - runtime data is stored under ~/.rrag by default
@@ -26,6 +29,8 @@ Notes:
   - update --review shows the current branch diff against main in the data repo
   - update --merge merges the current update branch into main in the data repo
   - ask prints only the final answer by default; add --explain to include retrieval and evidence details
+  - init provides a quick way to bootstrap LLM config presets such as Ollama or llama.cpp
+  - config --file loads an existing JSON config file into the shared data directory
   - clear removes staging/, runs/, and archive/ under the shared data directory
 `;
 }

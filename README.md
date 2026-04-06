@@ -51,7 +51,9 @@ node ./bin/rrag.js update --apply
 node ./bin/rrag.js update --review
 node ./bin/rrag.js update --merge
 node ./bin/rrag.js ask "What does the repo know?"
+node ./bin/rrag.js ask --explain "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
+node ./bin/rrag.js init --ollama --model qwen2.5:7b
 node ./bin/rrag.js resume 2026-03-30T16-22-24.637Z
 node ./bin/rrag.js runs
 node ./bin/rrag.js status
@@ -94,6 +96,14 @@ Example:
 
 ```bash
 export OPENAI_API_KEY=...
+node ./bin/rrag.js init --openai --model gpt-4.1-mini
+node ./bin/rrag.js update --apply
+```
+
+You can still configure keys one by one:
+
+```bash
+export OPENAI_API_KEY=...
 node ./bin/rrag.js config set llm_enabled true
 node ./bin/rrag.js config set llm_model gpt-4.1-mini
 node ./bin/rrag.js update --apply
@@ -102,21 +112,22 @@ node ./bin/rrag.js update --apply
 Ollama example:
 
 ```bash
-node ./bin/rrag.js config set llm_enabled true
-node ./bin/rrag.js config set llm_provider ollama
-node ./bin/rrag.js config set llm_base_url http://127.0.0.1:11434
-node ./bin/rrag.js config set llm_model qwen2.5:7b
+node ./bin/rrag.js init --ollama --model qwen2.5:7b
 node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
 ```
 
 `llama.cpp` server example:
 
 ```bash
-node ./bin/rrag.js config set llm_enabled true
-node ./bin/rrag.js config set llm_provider llama.cpp
-node ./bin/rrag.js config set llm_base_url http://127.0.0.1:8080/v1
-node ./bin/rrag.js config set llm_model local-model
+node ./bin/rrag.js init --llama-cpp --model local-model
 node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
+```
+
+You can also import an existing JSON file directly:
+
+```bash
+node ./bin/rrag.js config --file ./config/rrag.local.json
+node ./bin/rrag.js config show
 ```
 
 Relevant config keys:
