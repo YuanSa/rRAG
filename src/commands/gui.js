@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createRepoContext } from "../lib/repo.js";
 import { createCapturedStreams } from "../lib/capture.js";
 import { executeCommand } from "../lib/command-executor.js";
+import { loadConfig, saveConfig } from "../lib/config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GUI_ROOT = path.resolve(__dirname, "../../gui/dist");
@@ -101,6 +102,16 @@ async function routeRequest({ request, response, context }) {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/config") {
+      const commandContext = await buildCommandContext(context);
+      const config = await loadConfig(commandContext.paths.config);
+      await sendJson(response, 200, {
+        ok: true,
+        config
+      });
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/ask") {
       const body = await readJsonBody(request);
       const args = [];
@@ -137,6 +148,22 @@ async function routeRequest({ request, response, context }) {
 
     if (request.method === "POST" && url.pathname === "/api/clear") {
       await runAndRespond(response, context, "clear", []);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/config") {
+      const body = await readJsonBody(request);
+      const commandContext = await buildCommandContext(context);
+      const currentConfig = await loadConfig(commandContext.paths.config);
+      const nextConfig = {
+        ...currentConfig,
+        ...(body?.config || {})
+      };
+      await saveConfig(commandContext.paths.config, nextConfig);
+      await sendJson(response, 200, {
+        ok: true,
+        config: await loadConfig(commandContext.paths.config)
+      });
       return;
     }
 
