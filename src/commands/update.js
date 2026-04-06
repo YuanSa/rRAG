@@ -57,10 +57,10 @@ async function applyUpdate(context) {
 
   const skillSummaries = await collectSkillSummaries(context.paths.skills);
   const { runId, runPath } = await createRunDirectory(context.paths.runs);
-  const gitRepo = await isGitRepo(context.cwd);
-  const gitStatus = await getGitStatus(context.cwd);
-  const currentBranch = gitRepo ? await getCurrentBranch(context.cwd) : "";
-  const headCommit = gitRepo ? await getHeadCommit(context.cwd) : "";
+  const gitRepo = await isGitRepo(context.paths.root);
+  const gitStatus = await getGitStatus(context.paths.root);
+  const currentBranch = gitRepo ? await getCurrentBranch(context.paths.root) : "";
+  const headCommit = gitRepo ? await getHeadCommit(context.paths.root) : "";
 
   const { plan, stagedDecisions, plannerMode, plannerError } = await buildUpdatePlanWithLlm({
     stagedTexts,
@@ -84,7 +84,8 @@ async function applyUpdate(context) {
     mode: "update",
     run_id: runId,
     created_at: new Date().toISOString(),
-    repo_root: context.cwd,
+    repo_root: context.paths.root,
+    workspace_root: context.cwd,
     state: {
       status: "planned",
       updated_at: new Date().toISOString()
@@ -179,7 +180,7 @@ async function applyUpdate(context) {
   if (gitRepo) {
     context.stdout.write(`Git branch: ${currentBranch || "(detached)"}\n`);
   } else {
-    context.stdout.write("Git: not available in this working tree\n");
+    context.stdout.write("Git: not available in the data repository\n");
   }
   context.stdout.write(`Planner mode: ${plannerMode}\n`);
   if (plannerError) {

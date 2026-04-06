@@ -14,6 +14,8 @@ Usage:
   rrag config set <key> <value>
 
 Notes:
+  - runtime data is stored under ~/.rrag by default
+  - set RRAG_HOME to override the shared data directory
   - update "<text>" appends a text note into staging/
   - update --file copies a file or directory into staging/
   - update --apply consumes the whole staging/ directory

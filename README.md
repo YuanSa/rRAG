@@ -2,6 +2,22 @@
 
 `rrag` is a local CLI prototype for a filesystem-based, LLM-driven hierarchical knowledge system.
 
+Runtime knowledge data is stored outside this code repository by default:
+
+- default data root: `~/.rrag`
+- override with: `RRAG_HOME=/some/path`
+
+That shared data root contains:
+
+- `skills/`
+- `categories/`
+- `staging/`
+- `archive/`
+- `runs/`
+- `config.json`
+
+The data root is managed as its own git repository, separate from this source repo.
+
 The current codebase provides:
 
 - repository bootstrap for `skills/`, `categories/`, `staging/`, `archive/`, and `runs/`
@@ -39,6 +55,12 @@ node ./bin/rrag.js runs
 node ./bin/rrag.js status
 ```
 
+If you want to use a custom shared data root:
+
+```bash
+RRAG_HOME=~/.rrag-demo node ./bin/rrag.js status
+```
+
 ## Demo Test Cases
 
 The fastest way to see the prototype work end-to-end is:
@@ -49,7 +71,7 @@ npm run demo:testcases
 
 This runs in an isolated temporary workspace and will:
 
-- ingest the sample files under [examples/test-cases](/Users/yangzihan/Projects/rrag/examples/test-cases)
+- ingest the numbered sample files under [examples/test-cases](/Users/yangzihan/Projects/rrag/examples/test-cases)
 - run `update --apply`
 - ask a couple of retrieval questions
 - run `rebuild --dry-run`

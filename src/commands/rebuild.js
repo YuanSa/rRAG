@@ -12,8 +12,8 @@ export async function handleRebuild(args, context) {
   const skillSummaries = await collectSkillSummaries(context.paths.skills);
   const links = await collectCategoryLinks(context.paths.categories);
   const { runId, runPath } = await createRunDirectory(context.paths.runs);
-  const gitRepo = await isGitRepo(context.cwd);
-  const gitStatus = await getGitStatus(context.cwd);
+  const gitRepo = await isGitRepo(context.paths.root);
+  const gitStatus = await getGitStatus(context.paths.root);
 
   const todoItems = await buildRebuildPlan(skillSummaries, links, context.paths.categories);
 
@@ -23,15 +23,16 @@ export async function handleRebuild(args, context) {
     mode: "rebuild",
     run_id: runId,
     created_at: new Date().toISOString(),
-    repo_root: context.cwd,
+    repo_root: context.paths.root,
+    workspace_root: context.cwd,
     state: {
       status: dryRun ? "planned" : "executing",
       updated_at: new Date().toISOString()
     },
     git: {
       available: gitRepo,
-      branch: gitRepo ? await getCurrentBranch(context.cwd) : "",
-      head: gitRepo ? await getHeadCommit(context.cwd) : "",
+      branch: gitRepo ? await getCurrentBranch(context.paths.root) : "",
+      head: gitRepo ? await getHeadCommit(context.paths.root) : "",
       status: gitStatus.ok ? gitStatus.output : gitStatus.error
     },
     counts: {

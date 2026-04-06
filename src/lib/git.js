@@ -45,3 +45,10 @@ export async function isGitRepo(cwd) {
     return false;
   }
 }
+
+export async function ensureGitRepo(cwd) {
+  if (await isGitRepo(cwd)) {
+    return;
+  }
+  await execFileAsync("git", ["init"], { cwd });
+}

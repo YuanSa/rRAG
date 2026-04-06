@@ -4,6 +4,7 @@ export async function handleStatus(_args, context) {
   const status = await collectRepoStatus(context.paths);
 
   context.stdout.write("# Status\n\n");
+  context.stdout.write(`- data root: ${context.paths.root}\n`);
   context.stdout.write(`- active skills: ${status.skills}\n`);
   context.stdout.write(`- archived skills: ${status.archivedSkills}\n`);
   context.stdout.write(`- category paths: ${status.categories}\n`);

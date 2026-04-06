@@ -1,6 +1,8 @@
 import { mkdir } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { DEFAULT_CONFIG, loadConfig, saveConfig } from "./config.js";
+import { ensureGitRepo } from "./git.js";
 import { createLlmClient } from "./llm.js";
 
 const REQUIRED_DIRS = [
@@ -13,11 +15,15 @@ const REQUIRED_DIRS = [
 ];
 
 export async function createRepoContext({ cwd, stdout, stderr }) {
+  const dataRoot = resolveDataRoot(process.env);
+
   for (const dir of REQUIRED_DIRS) {
-    await mkdir(path.join(cwd, dir), { recursive: true });
+    await mkdir(path.join(dataRoot, dir), { recursive: true });
   }
 
-  const configPath = path.join(cwd, "config.json");
+  await ensureGitRepo(dataRoot);
+
+  const configPath = path.join(dataRoot, "config.json");
   const config = await loadConfig(configPath);
 
   if (JSON.stringify(config) === JSON.stringify(DEFAULT_CONFIG)) {
@@ -26,19 +32,29 @@ export async function createRepoContext({ cwd, stdout, stderr }) {
 
   return {
     cwd,
+    dataRoot,
     stdout,
     stderr,
     configPath,
     config,
     llm: createLlmClient(config),
     paths: {
-      skills: path.join(cwd, "skills"),
-      categories: path.join(cwd, "categories"),
-      staging: path.join(cwd, "staging"),
-      archive: path.join(cwd, "archive"),
-      archiveStaging: path.join(cwd, "archive", "staging"),
-      runs: path.join(cwd, "runs"),
+      root: dataRoot,
+      skills: path.join(dataRoot, "skills"),
+      categories: path.join(dataRoot, "categories"),
+      staging: path.join(dataRoot, "staging"),
+      archive: path.join(dataRoot, "archive"),
+      archiveStaging: path.join(dataRoot, "archive", "staging"),
+      runs: path.join(dataRoot, "runs"),
       config: configPath
     }
   };
+}
+
+function resolveDataRoot(env) {
+  const configured = String(env.RRAG_HOME || "").trim();
+  if (configured) {
+    return path.resolve(configured);
+  }
+  return path.join(os.homedir(), ".rrag");
 }
