@@ -21,6 +21,7 @@ import {
 import {
   IconArticle,
   IconBranch,
+  IconChecklistStroked,
   IconCheckCircleStroked,
   IconComment,
   IconLightningStroked,
