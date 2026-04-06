@@ -22,15 +22,17 @@ export async function executePlan({ runPath, plan, context, startIndex = 0, stat
       }
       const result = await executeItem(item, state, context);
       const note = result?.note ?? "done";
-      await appendStepLog(runPath, {
-        timestamp: new Date().toISOString(),
-        index,
-        action: item.action,
-        text: item.text,
-        note,
-        result: serializeExecutionResult(result)
-      });
-      await markTodoItemDone(runPath, index, note);
+      if (runPath) {
+        await appendStepLog(runPath, {
+          timestamp: new Date().toISOString(),
+          index,
+          action: item.action,
+          text: item.text,
+          note,
+          result: serializeExecutionResult(result)
+        });
+        await markTodoItemDone(runPath, index, note);
+      }
       execution.completedSteps += 1;
 
       if (result?.createdSkill) {

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { collectStagingTexts, addTextToStaging, copyPathToStaging } from "../lib/staging.js";
 import {
@@ -75,13 +75,17 @@ export async function handleUpdate(args, context) {
 }
 
 async function applyUpdate(context) {
+  const runsEnabled = context.config.runs_enabled !== false;
+  const archiveEnabled = context.config.archive_enabled === true;
   const stagedTexts = await collectStagingTexts(context.paths.staging);
   if (stagedTexts.length === 0) {
     throw new Error("staging is empty; nothing to apply");
   }
 
   const skillSummaries = await collectSkillSummaries(context.paths.skills);
-  const { runId, runPath } = await createRunDirectory(context.paths.runs);
+  const runId = new Date().toISOString().replaceAll(":", "-");
+  const runRecord = runsEnabled ? await createRunDirectory(context.paths.runs) : { runId, runPath: null };
+  const runPath = runRecord.runPath;
   const gitRepo = await isGitRepo(context.paths.root);
   const branchContext = gitRepo ? await ensureUpdateBranch(context.paths.root, runId) : null;
   const gitStatus = await getGitStatus(context.paths.root);
@@ -97,97 +101,108 @@ async function applyUpdate(context) {
   });
   const reviewText = await buildUpdateReviewWithLlm({ stagedTexts, skillSummaries, stagedDecisions, llm: context.llm });
 
-  await writeTodo(runPath, plan);
-  await writePlan(runPath, plan);
-  await writeReview(runPath, reviewText);
-  await writeDecisionSummary(runPath, stagedDecisions, {
-    mode: "update",
-    runId,
-    plannerMode,
-    plannerError
-  });
-  await writeRunManifest(runPath, {
-    mode: "update",
-    run_id: runId,
-    created_at: new Date().toISOString(),
-    repo_root: context.paths.root,
-    workspace_root: context.cwd,
-    state: {
-      status: "planned",
-      updated_at: new Date().toISOString()
-    },
-    git: {
-      available: gitRepo,
-      branch: currentBranch,
-      head: headCommit,
-      status: gitStatus.ok ? gitStatus.output : gitStatus.error,
-      branch_created: branchContext?.created ?? false,
-      branch_from: branchContext?.from ?? ""
-    },
-    counts: {
-      staged_files: stagedTexts.length,
-      existing_skills: skillSummaries.length,
-      todo_items: plan.length
-    },
-    planner: {
-      mode: plannerMode,
-      error: plannerError ?? null
-    },
-    plan,
-    decisions: stagedDecisions
-  });
-  await updateRunManifest(runPath, {
-    state: {
-      status: "executing",
-      updated_at: new Date().toISOString()
-    }
-  });
+  if (runPath) {
+    await writeTodo(runPath, plan);
+    await writePlan(runPath, plan);
+    await writeReview(runPath, reviewText);
+    await writeDecisionSummary(runPath, stagedDecisions, {
+      mode: "update",
+      runId,
+      plannerMode,
+      plannerError
+    });
+    await writeRunManifest(runPath, {
+      mode: "update",
+      run_id: runId,
+      created_at: new Date().toISOString(),
+      repo_root: context.paths.root,
+      workspace_root: context.cwd,
+      state: {
+        status: "planned",
+        updated_at: new Date().toISOString()
+      },
+      git: {
+        available: gitRepo,
+        branch: currentBranch,
+        head: headCommit,
+        status: gitStatus.ok ? gitStatus.output : gitStatus.error,
+        branch_created: branchContext?.created ?? false,
+        branch_from: branchContext?.from ?? ""
+      },
+      counts: {
+        staged_files: stagedTexts.length,
+        existing_skills: skillSummaries.length,
+        todo_items: plan.length
+      },
+      planner: {
+        mode: plannerMode,
+        error: plannerError ?? null
+      },
+      plan,
+      decisions: stagedDecisions
+    });
+    await updateRunManifest(runPath, {
+      state: {
+        status: "executing",
+        updated_at: new Date().toISOString()
+      }
+    });
+  }
 
   const execution = await executePlan({
     runPath,
     plan,
     context,
     onProgress: async ({ index, note, execution: progressExecution }) => {
-      await updateRunManifest(runPath, {
-        state: {
-          status: "executing",
-          last_completed_index: index,
-          last_note: note,
-          updated_at: new Date().toISOString()
-        },
-        execution: progressExecution
-      });
+      if (runPath) {
+        await updateRunManifest(runPath, {
+          state: {
+            status: "executing",
+            last_completed_index: index,
+            last_note: note,
+            updated_at: new Date().toISOString()
+          },
+          execution: progressExecution
+        });
+      }
     }
   });
 
   const validation = await validateRepo(context.paths);
-  const archivedPath = await archiveStaging(context.paths.staging, context.paths.archiveStaging, runId, {
-    status: execution.ok ? "executed" : "failed",
-    started_at: new Date().toISOString(),
-    staged_files: stagedTexts.map(item => item.relativePath),
-    run_id: runId,
-    run_path: runPath,
-    execution,
-    validation
-  });
+  let archivedPath = "";
+  if (archiveEnabled) {
+    archivedPath = await archiveStaging(context.paths.staging, context.paths.archiveStaging, runId, {
+      status: execution.ok ? "executed" : "failed",
+      started_at: new Date().toISOString(),
+      staged_files: stagedTexts.map(item => item.relativePath),
+      run_id: runId,
+      run_path: runPath,
+      execution,
+      validation
+    });
+  } else {
+    await resetStaging(context.paths.staging);
+  }
 
-  await writeChangesSummary(runPath, {
-    mode: "update",
-    runId,
-    completedSteps: execution.completedSteps,
-    validationOk: validation.ok
-  });
-  await writeCommitArtifacts(runPath, {
-    mode: "update",
-    runId,
-    completedSteps: execution.completedSteps,
-    validationOk: validation.ok
-  });
+  if (runPath) {
+    await writeChangesSummary(runPath, {
+      mode: "update",
+      runId,
+      completedSteps: execution.completedSteps,
+      validationOk: validation.ok
+    });
+    await writeCommitArtifacts(runPath, {
+      mode: "update",
+      runId,
+      completedSteps: execution.completedSteps,
+      validationOk: validation.ok
+    });
+  }
 
   let commitMessage = "";
   let committed = false;
   if (gitRepo) {
-    commitMessage = await loadCommitMessage(runPath);
+    commitMessage = runPath ? await loadCommitMessage(runPath) : "Apply update knowledge base changes";
     if (await hasTrackedChanges(context.paths.root)) {
       await stageAll(context.paths.root);
       await commitAll(context.paths.root, commitMessage);
@@ -199,39 +214,45 @@ async function applyUpdate(context) {
   const finalHead = gitRepo ? await getHeadCommit(context.paths.root) : "";
   const finalStatus = gitRepo ? await getGitStatus(context.paths.root) : { ok: false, output: "", error: "" };
 
-  await updateRunManifest(runPath, {
-    state: {
-      status: execution.ok ? "executed" : "failed",
+  if (runPath) {
+    await updateRunManifest(runPath, {
+      state: {
+        status: execution.ok ? "executed" : "failed",
+        archived_staging_path: archivedPath,
+        updated_at: new Date().toISOString()
+      },
+      plan: await readTodo(runPath),
+      execution,
+      validation,
+      git: {
+        available: gitRepo,
+        branch: finalBranch,
+        head: finalHead,
+        status: finalStatus.ok ? finalStatus.output : finalStatus.error,
+        committed
+      }
+    });
+
+    await writeSummary(runPath, {
+      mode: "update",
+      run_id: runId,
+      staged_files: stagedTexts.length,
+      existing_skills: skillSummaries.length,
+      created_skills: execution.createdSkills.length,
+      updated_skills: execution.updatedSkills.length,
       archived_staging_path: archivedPath,
-      updated_at: new Date().toISOString()
-    },
-    plan: await readTodo(runPath),
-    execution,
-    validation,
-    git: {
-      available: gitRepo,
-      branch: finalBranch,
-      head: finalHead,
-      status: finalStatus.ok ? finalStatus.output : finalStatus.error,
+      execution_mode: execution.mode,
+      planner_mode: plannerMode,
+      git_branch: finalBranch,
       committed
-    }
-  });
+    });
+  }
 
-  await writeSummary(runPath, {
-    mode: "update",
-    run_id: runId,
-    staged_files: stagedTexts.length,
-    existing_skills: skillSummaries.length,
-    created_skills: execution.createdSkills.length,
-    updated_skills: execution.updatedSkills.length,
-    archived_staging_path: archivedPath,
-    execution_mode: execution.mode,
-    planner_mode: plannerMode,
-    git_branch: finalBranch,
-    committed
-  });
-
-  context.stdout.write(`Created run artifacts in ${runPath}\n`);
+  if (runPath) {
+    context.stdout.write(`Created run artifacts in ${runPath}\n`);
+  } else {
+    context.stdout.write("Run artifact recording is disabled.\n");
+  }
   context.stdout.write(`Validated repository: ${validation.ok ? "ok" : "failed"}\n`);
   if (gitRepo) {
     context.stdout.write(`Git branch: ${finalBranch || "(detached)"}\n`);
@@ -245,7 +266,11 @@ async function applyUpdate(context) {
   }
   context.stdout.write(`Execution mode: ${execution.mode}\n`);
   context.stdout.write(`Created skills: ${execution.createdSkills.length}\n`);
-  context.stdout.write(`Archived staging into ${archivedPath}\n`);
+  if (archiveEnabled) {
+    context.stdout.write(`Archived staging into ${archivedPath}\n`);
+  } else {
+    context.stdout.write("Archive backup disabled; staging was cleared after apply.\n");
+  }
   if (execution.notes.length > 0) {
     context.stdout.write(`Notes: ${execution.notes.join(" | ")}\n`);
   }
@@ -305,4 +330,9 @@ async function ensureUpdateBranch(repoRoot, runId) {
 async function loadCommitMessage(runPath) {
   const raw = await readFile(path.join(runPath, "commit-message.txt"), "utf8");
   return raw.trim();
+}
+
+async function resetStaging(stagingRoot) {
+  await rm(stagingRoot, { recursive: true, force: true });
+  await mkdir(stagingRoot, { recursive: true });
 }

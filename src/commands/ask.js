@@ -112,6 +112,9 @@ function oneLine(text) {
 }
 
 async function persistAskRun({ context, question, answer, results, traversal }) {
+  if (!context.config.runs_enabled) {
+    return;
+  }
   const { runId, runPath } = await createRunDirectory(context.paths.runs);
   const rendered = renderAskArtifact({ question, answer, results, traversal });
   await writeMarkdownArtifact(runPath, "answer.md", rendered);

@@ -4,6 +4,9 @@ import { validateRepo } from "../lib/fs-api.js";
 import { buildResumeState } from "../lib/resume-state.js";
 
 export async function handleResume(args, context) {
+  if (context.config.runs_enabled === false) {
+    throw new Error("resume requires runs recording to be enabled");
+  }
   const runId = args[0];
   if (!runId) {
     throw new Error("resume requires a run id, e.g. rrag resume 2026-03-30T02-28-24.304Z");

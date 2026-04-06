@@ -9,103 +9,116 @@ import path from "node:path";
 
 export async function handleRebuild(args, context) {
   const dryRun = args.includes("--dry-run");
+  const runsEnabled = context.config.runs_enabled !== false;
   const skillSummaries = await collectSkillSummaries(context.paths.skills);
   const links = await collectCategoryLinks(context.paths.categories);
-  const { runId, runPath } = await createRunDirectory(context.paths.runs);
+  const runId = new Date().toISOString().replaceAll(":", "-");
+  const runRecord = runsEnabled ? await createRunDirectory(context.paths.runs) : { runId, runPath: null };
+  const runPath = runRecord.runPath;
   const gitRepo = await isGitRepo(context.paths.root);
   const gitStatus = await getGitStatus(context.paths.root);
 
   const todoItems = await buildRebuildPlan(skillSummaries, links, context.paths.categories);
 
-  await writeTodo(runPath, todoItems);
-  await writePlan(runPath, todoItems);
-  await writeRunManifest(runPath, {
-    mode: "rebuild",
-    run_id: runId,
-    created_at: new Date().toISOString(),
-    repo_root: context.paths.root,
-    workspace_root: context.cwd,
-    state: {
-      status: dryRun ? "planned" : "executing",
-      updated_at: new Date().toISOString()
-    },
-    git: {
-      available: gitRepo,
-      branch: gitRepo ? await getCurrentBranch(context.paths.root) : "",
-      head: gitRepo ? await getHeadCommit(context.paths.root) : "",
-      status: gitStatus.ok ? gitStatus.output : gitStatus.error
-    },
-    counts: {
-      skills_scanned: skillSummaries.length,
-      links_scanned: links.length,
-      todo_items: todoItems.length
-    },
-    plan: todoItems
-  });
+  if (runPath) {
+    await writeTodo(runPath, todoItems);
+    await writePlan(runPath, todoItems);
+    await writeRunManifest(runPath, {
+      mode: "rebuild",
+      run_id: runId,
+      created_at: new Date().toISOString(),
+      repo_root: context.paths.root,
+      workspace_root: context.cwd,
+      state: {
+        status: dryRun ? "planned" : "executing",
+        updated_at: new Date().toISOString()
+      },
+      git: {
+        available: gitRepo,
+        branch: gitRepo ? await getCurrentBranch(context.paths.root) : "",
+        head: gitRepo ? await getHeadCommit(context.paths.root) : "",
+        status: gitStatus.ok ? gitStatus.output : gitStatus.error
+      },
+      counts: {
+        skills_scanned: skillSummaries.length,
+        links_scanned: links.length,
+        todo_items: todoItems.length
+      },
+      plan: todoItems
+    });
+  }
   const execution = dryRun ? null : await executePlan({
     runPath,
     plan: todoItems,
     context,
     onProgress: async ({ index, note }) => {
-      await updateRunManifest(runPath, {
-        state: {
-          status: "executing",
-          last_completed_index: index,
-          last_note: note,
-          updated_at: new Date().toISOString()
-        }
-      });
+      if (runPath) {
+        await updateRunManifest(runPath, {
+          state: {
+            status: "executing",
+            last_completed_index: index,
+            last_note: note,
+            updated_at: new Date().toISOString()
+          }
+        });
+      }
     }
   });
   const validation = await validateRepo(context.paths);
-  await updateRunManifest(runPath, {
-    state: {
-      status: dryRun ? "planned" : execution.ok ? "executed" : "failed",
-      updated_at: new Date().toISOString()
-    },
-    plan: await readTodo(runPath),
-    execution,
-    validation
-  });
-  await writeChangesSummary(runPath, {
-    mode: "rebuild",
-    runId,
-    completedSteps: execution?.completedSteps ?? 0,
-    validationOk: validation.ok
-  });
-  await writeCommitArtifacts(runPath, {
-    mode: "rebuild",
-    runId,
-    completedSteps: execution?.completedSteps ?? 0,
-    validationOk: validation.ok
-  });
-  await writeReview(
-    runPath,
-    [
-      "# Rebuild Review",
-      "",
-      `- Dry run: ${dryRun ? "yes" : "no"}`,
-      `- Skills scanned: ${skillSummaries.length}`,
-      `- Links scanned: ${links.length}`,
-      `- Planned actions: ${todoItems.length}`,
-      "",
-      ...buildReviewNotes(skillSummaries, links),
-      "",
-      "This rebuild plan is heuristic and currently not auto-executed."
-    ].join("\n")
-  );
-  await writeSummary(runPath, {
-    mode: "rebuild",
-    run_id: runId,
-    dry_run: dryRun,
-    skills_scanned: skillSummaries.length,
-    links_scanned: links.length,
-    planned_actions: todoItems.length,
-    executed: !dryRun,
-    validation_ok: validation.ok
-  });
+  if (runPath) {
+    await updateRunManifest(runPath, {
+      state: {
+        status: dryRun ? "planned" : execution.ok ? "executed" : "failed",
+        updated_at: new Date().toISOString()
+      },
+      plan: await readTodo(runPath),
+      execution,
+      validation
+    });
+    await writeChangesSummary(runPath, {
+      mode: "rebuild",
+      runId,
+      completedSteps: execution?.completedSteps ?? 0,
+      validationOk: validation.ok
+    });
+    await writeCommitArtifacts(runPath, {
+      mode: "rebuild",
+      runId,
+      completedSteps: execution?.completedSteps ?? 0,
+      validationOk: validation.ok
+    });
+    await writeReview(
+      runPath,
+      [
+        "# Rebuild Review",
+        "",
+        `- Dry run: ${dryRun ? "yes" : "no"}`,
+        `- Skills scanned: ${skillSummaries.length}`,
+        `- Links scanned: ${links.length}`,
+        `- Planned actions: ${todoItems.length}`,
+        "",
+        ...buildReviewNotes(skillSummaries, links),
+        "",
+        "This rebuild plan is heuristic and currently not auto-executed."
+      ].join("\n")
+    );
+    await writeSummary(runPath, {
+      mode: "rebuild",
+      run_id: runId,
+      dry_run: dryRun,
+      skills_scanned: skillSummaries.length,
+      links_scanned: links.length,
+      planned_actions: todoItems.length,
+      executed: !dryRun,
+      validation_ok: validation.ok
+    });
+  }
 
-  context.stdout.write(`Generated rebuild artifacts in ${runPath}\n`);
+  if (runPath) {
+    context.stdout.write(`Generated rebuild artifacts in ${runPath}\n`);
+  } else {
+    context.stdout.write("Run artifact recording is disabled.\n");
+  }
   if (dryRun) {
     context.stdout.write("Dry run complete.\n");
   } else {

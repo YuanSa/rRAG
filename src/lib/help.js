@@ -10,7 +10,7 @@ Usage:
   rrag ask "<question>"
   rrag ask --explain "<question>"
   rrag rebuild [--dry-run]
-  rrag init [--ollama|--llama-cpp|--openai] [--model <name>] [--base-url <url>] [--api-key-env <env>] [--enable-llm|--disable-llm]
+  rrag init
   rrag resume <run_id>
   rrag runs [limit]
   rrag delete <skill_id>
@@ -29,7 +29,7 @@ Notes:
   - update --review shows the current branch diff against main in the data repo
   - update --merge merges the current update branch into main in the data repo
   - ask prints only the final answer by default; add --explain to include retrieval and evidence details
-  - init runs an interactive setup; existing config values become defaults, and fresh setups use recommended defaults
+  - init runs an interactive setup only; existing config values become defaults, and fresh setups use recommended defaults
   - config --file loads an existing JSON config file into the shared data directory
   - clear removes staging/, runs/, and archive/ under the shared data directory
 `;

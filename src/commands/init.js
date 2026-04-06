@@ -2,47 +2,33 @@ import readline from "node:readline/promises";
 import { stdin as processStdin, stdout as processStdout } from "node:process";
 import { loadConfig, saveConfig } from "../lib/config.js";
 
-const PROVIDER_PRESETS = {
-  ollama: {
-    llm_enabled: true,
-    llm_provider: "ollama",
-    llm_base_url: "http://127.0.0.1:11434",
-    llm_model: "qwen2.5:7b",
-    llm_api_key_env: "OPENAI_API_KEY"
-  },
-  "llama.cpp": {
-    llm_enabled: true,
-    llm_provider: "llama.cpp",
-    llm_base_url: "http://127.0.0.1:8080/v1",
-    llm_model: "local-model",
-    llm_api_key_env: "OPENAI_API_KEY"
-  },
-  "openai-compatible": {
-    llm_enabled: true,
-    llm_provider: "openai-compatible",
-    llm_base_url: "https://api.openai.com/v1",
-    llm_model: "gpt-4.1-mini",
-    llm_api_key_env: "OPENAI_API_KEY"
-  }
+const RECOMMENDED_CONFIG = {
+  runs_enabled: false,
+  archive_enabled: false,
+  llm_enabled: true,
+  llm_provider: "ollama",
+  llm_base_url: "http://127.0.0.1:11434",
+  llm_model: "qwen2.5:7b",
+  llm_api_key_env: "OPENAI_API_KEY"
 };
 
 export async function handleInit(args, context) {
+  if (args.length > 0) {
+    throw new Error("init does not accept flags; run it interactively and use config --file or config set for scripted changes");
+  }
   const currentConfig = await loadConfig(context.paths.config);
-  const overrides = parseInitArgs(args);
-  const startingConfig = buildStartingConfig(context.hasExistingConfig, currentConfig, overrides);
   const interactive = Boolean((context.stdin ?? processStdin).isTTY && (context.stdout ?? processStdout).isTTY);
-  const next = interactive
-    ? await promptForConfig(startingConfig, context)
-    : startingConfig;
+  if (!interactive) {
+    throw new Error("init requires an interactive terminal; use config --file or config set in scripts");
+  }
+  const startingConfig = buildStartingConfig(context.hasExistingConfig, currentConfig);
+  const next = await promptForConfig(startingConfig, context);
 
   await saveConfig(context.paths.config, next);
 
-  if (!interactive) {
-    context.stdout.write(context.hasExistingConfig
-      ? "Initialized config non-interactively using current settings plus provided overrides.\n"
-      : "Initialized config non-interactively using recommended defaults plus provided overrides.\n");
-  }
   context.stdout.write(`Initialized config at ${context.paths.config}\n`);
+  context.stdout.write(`- runs_enabled: ${next.runs_enabled ? "true" : "false"}\n`);
+  context.stdout.write(`- archive_enabled: ${next.archive_enabled ? "true" : "false"}\n`);
   context.stdout.write(`- llm_enabled: ${next.llm_enabled ? "true" : "false"}\n`);
   context.stdout.write(`- llm_provider: ${next.llm_provider}\n`);
   context.stdout.write(`- llm_base_url: ${next.llm_base_url}\n`);
@@ -50,14 +36,14 @@ export async function handleInit(args, context) {
   context.stdout.write(`- llm_api_key_env: ${next.llm_api_key_env}\n`);
 }
 
-function buildStartingConfig(hasExistingConfig, currentConfig, overrides) {
-  const base = hasExistingConfig
-    ? currentConfig
-    : {
-        ...currentConfig,
-        ...PROVIDER_PRESETS.ollama
-      };
-  return { ...base, ...overrides };
+function buildStartingConfig(hasExistingConfig, currentConfig) {
+  if (hasExistingConfig) {
+    return currentConfig;
+  }
+  return {
+    ...currentConfig,
+    ...RECOMMENDED_CONFIG
+  };
 }
 
 async function promptForConfig(startingConfig, context) {
@@ -72,39 +58,19 @@ async function promptForConfig(startingConfig, context) {
       ? "Starting interactive config using your current settings as defaults.\n"
       : "Starting interactive config using recommended defaults for a fresh setup.\n");
 
+    const runsEnabled = await promptBoolean(rl, "Record run artifacts under runs/", startingConfig.runs_enabled);
+    const archiveEnabled = await promptBoolean(rl, "Archive consumed staging inputs after update --apply", startingConfig.archive_enabled);
     const llmEnabled = await promptBoolean(rl, "Enable LLM features", startingConfig.llm_enabled);
-    const provider = normalizeProvider(await promptText(
-      rl,
-      "LLM provider (ollama / llama.cpp / openai-compatible)",
-      startingConfig.llm_provider
-    ));
+    const provider = normalizeProvider(await promptText(rl, "LLM provider (ollama / llama.cpp / openai-compatible)", startingConfig.llm_provider));
 
-    const providerPreset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS["openai-compatible"];
-    const modelDefault = pickDefault(
-      startingConfig.llm_provider,
-      provider,
-      startingConfig.llm_model,
-      providerPreset.llm_model
-    );
-    const baseUrlDefault = pickDefault(
-      startingConfig.llm_provider,
-      provider,
-      startingConfig.llm_base_url,
-      providerPreset.llm_base_url
-    );
-    const apiKeyEnvDefault = pickDefault(
-      startingConfig.llm_provider,
-      provider,
-      startingConfig.llm_api_key_env,
-      providerPreset.llm_api_key_env
-    );
-
-    const llmModel = await promptText(rl, "Model name", modelDefault);
-    const llmBaseUrl = await promptText(rl, "Base URL", baseUrlDefault);
-    const llmApiKeyEnv = await promptText(rl, "API key env var", apiKeyEnvDefault);
+    const llmModel = await promptText(rl, "Model name", startingConfig.llm_model);
+    const llmBaseUrl = await promptText(rl, "Base URL", startingConfig.llm_base_url);
+    const llmApiKeyEnv = await promptText(rl, "API key env var", startingConfig.llm_api_key_env);
 
     return {
       ...startingConfig,
+      runs_enabled: runsEnabled,
+      archive_enabled: archiveEnabled,
       llm_enabled: llmEnabled,
       llm_provider: provider,
       llm_model: llmModel,
@@ -114,61 +80,6 @@ async function promptForConfig(startingConfig, context) {
   } finally {
     rl.close();
   }
-}
-
-function pickDefault(startingProvider, chosenProvider, currentValue, fallbackValue) {
-  if (startingProvider === chosenProvider && currentValue !== undefined && currentValue !== null && String(currentValue).trim() !== "") {
-    return String(currentValue);
-  }
-  return fallbackValue;
-}
-
-function parseInitArgs(args) {
-  const updates = {};
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-
-    if (arg === "--ollama") {
-      Object.assign(updates, PROVIDER_PRESETS.ollama);
-      continue;
-    }
-    if (arg === "--llama-cpp") {
-      Object.assign(updates, PROVIDER_PRESETS["llama.cpp"]);
-      continue;
-    }
-    if (arg === "--openai") {
-      Object.assign(updates, PROVIDER_PRESETS["openai-compatible"]);
-      continue;
-    }
-    if (arg === "--enable-llm") {
-      updates.llm_enabled = true;
-      continue;
-    }
-    if (arg === "--disable-llm") {
-      updates.llm_enabled = false;
-      continue;
-    }
-    if (arg === "--model") {
-      updates.llm_model = requireValue(args, ++index, "--model");
-      continue;
-    }
-    if (arg === "--base-url") {
-      updates.llm_base_url = requireValue(args, ++index, "--base-url");
-      continue;
-    }
-    if (arg === "--api-key-env") {
-      updates.llm_api_key_env = requireValue(args, ++index, "--api-key-env");
-      continue;
-    }
-    throw new Error(`unknown init option "${arg}"`);
-  }
-
-  if (updates.llm_provider) {
-    updates.llm_provider = normalizeProvider(updates.llm_provider);
-  }
-
-  return updates;
 }
 
 async function promptText(rl, label, defaultValue) {
@@ -211,12 +122,4 @@ function normalizeProvider(provider) {
     return "llama.cpp";
   }
   throw new Error(`unsupported provider "${provider}"`);
-}
-
-function requireValue(args, index, flag) {
-  const value = args[index];
-  if (!value) {
-    throw new Error(`${flag} requires a value`);
-  }
-  return value;
 }

@@ -11,6 +11,8 @@ export async function handleStatus(_args, context) {
   context.stdout.write(`- taxonomy: max_depth=${status.taxonomy.maxDepth}, leaf_categories=${status.taxonomy.leafCount}\n`);
   context.stdout.write(`- active links: ${status.links}\n`);
   context.stdout.write(`- redundant ancestor links: ${status.redundantAncestorLinks}\n`);
+  context.stdout.write(`- runs enabled: ${context.config.runs_enabled ? "yes" : "no"}\n`);
+  context.stdout.write(`- archive enabled: ${context.config.archive_enabled ? "yes" : "no"}\n`);
   context.stdout.write(`- archived staging snapshots: ${status.archivedStaging}\n`);
   context.stdout.write(`- run directories: ${status.runs}\n`);
   context.stdout.write(`- run states: planned=${status.runStates.planned}, executing=${status.runStates.executing}, executed=${status.runStates.executed}, failed=${status.runStates.failed}, unknown=${status.runStates.unknown}\n`);

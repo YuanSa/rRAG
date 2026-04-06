@@ -11,6 +11,8 @@ export const DEFAULT_CONFIG = {
   max_passages_per_skill: 5,
   staging_max_file_size: 262144,
   staging_max_total_files: 500,
+  runs_enabled: true,
+  archive_enabled: true,
   llm_enabled: false,
   llm_provider: "openai-compatible",
   llm_base_url: "https://api.openai.com/v1",

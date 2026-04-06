@@ -53,7 +53,7 @@ node ./bin/rrag.js update --merge
 node ./bin/rrag.js ask "What does the repo know?"
 node ./bin/rrag.js ask --explain "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
-node ./bin/rrag.js init --ollama --model qwen2.5:7b
+node ./bin/rrag.js init
 node ./bin/rrag.js resume 2026-03-30T16-22-24.637Z
 node ./bin/rrag.js runs
 node ./bin/rrag.js status
@@ -66,7 +66,7 @@ If you want to use a custom shared data root:
 RRAG_HOME=~/.rrag-demo node ./bin/rrag.js status
 ```
 
-`node ./bin/rrag.js init` launches an interactive setup guide in a real terminal. In non-interactive contexts such as scripts or pipes, it falls back to current values or recommended defaults plus any flags you pass.
+`node ./bin/rrag.js init` launches an interactive setup guide in a real terminal. It uses your current config as defaults when one exists, and recommended defaults for a fresh setup. For scripted changes, use `config --file` or `config set`.
 
 ## Demo Test Cases
 
@@ -98,30 +98,21 @@ Example:
 
 ```bash
 export OPENAI_API_KEY=...
-node ./bin/rrag.js init --openai --model gpt-4.1-mini
-node ./bin/rrag.js update --apply
-```
-
-You can still configure keys one by one:
-
-```bash
-export OPENAI_API_KEY=...
-node ./bin/rrag.js config set llm_enabled true
-node ./bin/rrag.js config set llm_model gpt-4.1-mini
+node ./bin/rrag.js init
 node ./bin/rrag.js update --apply
 ```
 
 Ollama example:
 
 ```bash
-node ./bin/rrag.js init --ollama --model qwen2.5:7b
+node ./bin/rrag.js init
 node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
 ```
 
 `llama.cpp` server example:
 
 ```bash
-node ./bin/rrag.js init --llama-cpp --model local-model
+node ./bin/rrag.js init
 node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
 ```
 
@@ -132,6 +123,13 @@ node ./bin/rrag.js config --file ./config/rrag.local.json
 node ./bin/rrag.js config show
 ```
 
+The interactive `init` flow now also asks whether you want to:
+
+- record run artifacts under `runs/`
+- archive consumed staging input under `archive/`
+
+For fresh setups, the recommended defaults keep both disabled.
+
 Relevant config keys:
 
 - `llm_enabled`
@@ -139,6 +137,8 @@ Relevant config keys:
 - `llm_base_url`
 - `llm_model`
 - `llm_api_key_env`
+- `runs_enabled`
+- `archive_enabled`
 - `branch_max_per_level`
 - `branch_min_score`
 - `branch_score_margin`
