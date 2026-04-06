@@ -37,10 +37,23 @@
   "scripts": {
     "start": "node ./bin/rrag.js",
     "gui": "node ./bin/rrag.js gui",
+    "gui:dev": "vite --config ./gui/vite.config.js",
+    "build:gui": "vite build --config ./gui/vite.config.js",
+    "prepack": "npm run build:gui",
     "check": "node ./bin/rrag.js --help",
     "demo:testcases": "node ./scripts/run-test-cases.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@douyinfe/semi-icons": "^2.93.0",
+    "@douyinfe/semi-ui": "^2.93.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.5"
   }
 }

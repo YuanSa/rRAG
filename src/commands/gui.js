@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRepoContext } from "../lib/repo.js";
@@ -7,12 +7,13 @@ import { createCapturedStreams } from "../lib/capture.js";
 import { executeCommand } from "../lib/command-executor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const GUI_ROOT = path.resolve(__dirname, "../../gui");
+const GUI_ROOT = path.resolve(__dirname, "../../gui/dist");
 const HOST = "127.0.0.1";
 const PORT = 4317;
 
 export async function handleGui(args, context) {
   const options = parseGuiOptions(args);
+  await ensureGuiBuild();
   const server = createServer((request, response) => {
     void routeRequest({ request, response, context, options });
   });
@@ -60,18 +61,8 @@ async function routeRequest({ request, response, context }) {
   try {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
 
-    if (request.method === "GET" && url.pathname === "/") {
-      await serveStatic(response, "index.html", "text/html; charset=utf-8");
-      return;
-    }
-
-    if (request.method === "GET" && url.pathname === "/app.js") {
-      await serveStatic(response, "app.js", "text/javascript; charset=utf-8");
-      return;
-    }
-
-    if (request.method === "GET" && url.pathname === "/styles.css") {
-      await serveStatic(response, "styles.css", "text/css; charset=utf-8");
+    if (request.method === "GET" && !url.pathname.startsWith("/api/")) {
+      await serveGuiAsset(response, url.pathname);
       return;
     }
 
@@ -213,14 +204,63 @@ async function readJsonBody(request) {
   return JSON.parse(raw);
 }
 
-async function serveStatic(response, fileName, contentType) {
-  const filePath = path.join(GUI_ROOT, fileName);
+async function serveGuiAsset(response, urlPathname) {
+  const normalizedPath = normalizeAssetPath(urlPathname);
+  const candidatePath = path.join(GUI_ROOT, normalizedPath);
+  const filePath = await exists(candidatePath) ? candidatePath : path.join(GUI_ROOT, "index.html");
   const content = await readFile(filePath);
-  response.writeHead(200, { "content-type": contentType });
+  response.writeHead(200, { "content-type": contentTypeFor(filePath) });
   response.end(content);
 }
 
 async function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
+}
+
+async function ensureGuiBuild() {
+  if (!(await exists(path.join(GUI_ROOT, "index.html")))) {
+    throw new Error('GUI assets are missing. Run "npm run build:gui" first.');
+  }
+}
+
+async function exists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeAssetPath(urlPathname) {
+  const cleaned = decodeURIComponent(urlPathname || "/").replace(/^\/+/, "");
+  if (!cleaned) {
+    return "index.html";
+  }
+  return cleaned;
+}
+
+function contentTypeFor(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  switch (extension) {
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".svg":
+      return "image/svg+xml";
+    case ".png":
+      return "image/png";
+    case ".woff":
+      return "font/woff";
+    case ".woff2":
+      return "font/woff2";
+    default:
+      return "application/octet-stream";
+  }
 }

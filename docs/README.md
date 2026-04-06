@@ -157,7 +157,7 @@ rrag rebuild
 
 ### 7. Use the local web console
 
-If you prefer a browser-based control room for `ask`, `update`, `review`, `merge`, `status`, and `runs`:
+If you prefer a browser-based control room for `ask`, `update`, `review`, `merge`, `status`, and `runs`, `rrag` also ships with a React GUI built with Semi Design:
 
 ```bash
 rrag gui
@@ -231,7 +231,7 @@ This directory is initialized as its own git repository, separate from the sourc
 | `rrag update --merge` | Merge the current update branch back into `main`. | Finalize a reviewed update |
 | `rrag ask "<question>"` | Ask a question and print only the final answer. | Normal daily usage |
 | `rrag ask --explain "<question>"` | Ask a question and include retrieval explanation, matched skills, and evidence passages. | Debug retrieval behavior |
-| `rrag gui` | Start the local browser console for `ask`, `update`, `review`, `merge`, `status`, and `runs`. | Web-based daily operation |
+| `rrag gui` | Start the local React + Semi browser console for `ask`, `update`, `review`, `merge`, `status`, and `runs`. | Web-based daily operation |
 | `rrag rebuild [--dry-run]` | Rebuild or preview taxonomy maintenance actions. | Clean up or reorganize the knowledge base |
 | `rrag config show` | Show the active config. | Verify current settings |
 | `rrag config set <key> <value>` | Update one config value. | Fine-tune behavior |
