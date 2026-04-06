@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_CONFIG, loadConfig, saveConfig } from "./config.js";
@@ -14,7 +14,7 @@ const REQUIRED_DIRS = [
   "runs"
 ];
 
-export async function createRepoContext({ cwd, stdout, stderr }) {
+export async function createRepoContext({ cwd, stdout, stderr, stdin }) {
   const dataRoot = resolveDataRoot(process.env);
 
   for (const dir of REQUIRED_DIRS) {
@@ -24,6 +24,7 @@ export async function createRepoContext({ cwd, stdout, stderr }) {
   await ensureGitRepo(dataRoot);
 
   const configPath = path.join(dataRoot, "config.json");
+  const hasExistingConfig = await fileExists(configPath);
   const config = await loadConfig(configPath);
   await ensureDataGitignore(path.join(dataRoot, ".gitignore"));
 
@@ -37,8 +38,10 @@ export async function createRepoContext({ cwd, stdout, stderr }) {
     dataRoot,
     stdout,
     stderr,
+    stdin,
     configPath,
     config,
+    hasExistingConfig,
     llm: createLlmClient(config),
     paths: {
       root: dataRoot,
@@ -51,6 +54,15 @@ export async function createRepoContext({ cwd, stdout, stderr }) {
       config: configPath
     }
   };
+}
+
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function resolveDataRoot(env) {

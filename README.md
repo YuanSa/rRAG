@@ -66,6 +66,8 @@ If you want to use a custom shared data root:
 RRAG_HOME=~/.rrag-demo node ./bin/rrag.js status
 ```
 
+`node ./bin/rrag.js init` launches an interactive setup guide in a real terminal. In non-interactive contexts such as scripts or pipes, it falls back to current values or recommended defaults plus any flags you pass.
+
 ## Demo Test Cases
 
 The fastest way to see the prototype work end-to-end is:
