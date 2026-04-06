@@ -143,13 +143,23 @@ rrag rebuild --dry-run
 rrag rebuild
 ```
 
-### 7. 清理缓存和临时产物
+### 7. 使用本地 Web 控制台
+
+如果你希望在浏览器里完成 `ask`、`update`、`review`、`merge`、`status`、`runs` 等操作：
+
+```bash
+rrag gui
+```
+
+它会启动一个本地 GUI 控制台，默认地址通常是 `http://127.0.0.1:4317`。
+
+### 8. 清理缓存和临时产物
 
 ```bash
 rrag clear
 ```
 
-### 8. 软删除一个 skill
+### 9. 软删除一个 skill
 
 ```bash
 rrag delete <skill_id>
@@ -209,6 +219,7 @@ RRAG_HOME=~/.rrag-demo rrag status
 | `rrag update --merge` | 把当前 update 分支合并回 `main`。 | 确认无误后正式落库 |
 | `rrag ask "<question>"` | 提问，只输出最终答案。 | 日常使用 |
 | `rrag ask --explain "<question>"` | 提问并输出检索解释、命中 skill 和证据片段。 | 调试召回过程 |
+| `rrag gui` | 启动本地浏览器控制台，集中完成 `ask`、`update`、`review`、`merge`、`status`、`runs`。 | 偏可视化的日常操作 |
 | `rrag rebuild [--dry-run]` | 重建或预览分类结构调整。 | 整理知识库、清理分类漂移 |
 | `rrag config show` | 查看当前配置。 | 排查配置是否生效 |
 | `rrag config set <key> <value>` | 设置单个配置项。 | 微调行为 |

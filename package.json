@@ -26,6 +26,7 @@
   },
   "files": [
     "bin",
+    "gui",
     "src",
     "docs",
     "examples",
@@ -35,6 +36,7 @@
   ],
   "scripts": {
     "start": "node ./bin/rrag.js",
+    "gui": "node ./bin/rrag.js gui",
     "check": "node ./bin/rrag.js --help",
     "demo:testcases": "node ./scripts/run-test-cases.mjs"
   },
