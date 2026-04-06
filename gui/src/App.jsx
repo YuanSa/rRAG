@@ -33,7 +33,6 @@ import {
 
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
-const { TextArea: InputTextArea } = Input;
 
 const NAV_ITEMS = [
   { key: "status", label: "Status", icon: <IconPulse />, hint: "Repository health and recent activity" },
@@ -493,7 +492,7 @@ function AskView({ question, setQuestion, explain, setExplain, askOutput, loadin
       title={<SectionTitle icon={<IconComment />} title="Ask the knowledge base" subtitle="Ask normally, or enable explain mode to inspect the retrieval route" />}
     >
       <Space vertical align="start" className="full-width" spacing="medium">
-        <InputTextArea
+        <TextArea
           value={question}
           onChange={setQuestion}
           autosize={{ minRows: 6, maxRows: 14 }}
@@ -537,7 +536,7 @@ function UpdateView({
           <Tabs.TabPane itemKey={tab.key} tab={tab.label} key={tab.key}>
             {tab.key === "staging" ? (
               <Space vertical align="start" className="full-width" spacing="medium">
-                <InputTextArea
+                <TextArea
                   value={note}
                   onChange={setNote}
                   autosize={{ minRows: 8, maxRows: 16 }}
