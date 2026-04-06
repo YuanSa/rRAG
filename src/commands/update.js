@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { collectStagingTexts, addTextToStaging, copyPathToStaging } from "../lib/staging.js";
 import {
@@ -16,17 +17,41 @@ import {
 } from "../lib/run-artifacts.js";
 import { collectSkillSummaries } from "../lib/skill-discovery.js";
 import { validateRepo } from "../lib/fs-api.js";
-import { getCurrentBranch, getGitStatus, getHeadCommit, isGitRepo } from "../lib/git.js";
+import {
+  commitAll,
+  createUpdateBranchName,
+  createBranchFromMain,
+  diffAgainstMain,
+  getCurrentBranch,
+  getGitStatus,
+  getHeadCommit,
+  hasTrackedChanges,
+  isGitRepo,
+  mergeCurrentBranchIntoMain,
+  stageAll
+} from "../lib/git.js";
 import { buildUpdatePlanWithLlm, buildUpdateReviewWithLlm } from "../lib/planner.js";
 import { executePlan } from "../lib/executor.js";
 
+const MAIN_BRANCH = "main";
+
 export async function handleUpdate(args, context) {
   if (args.length === 0) {
-    throw new Error('update requires either "<text>", --file <path>, or --apply');
+    throw new Error('update requires either "<text>", --file <path>, --apply, --review, or --merge');
   }
 
   if (args[0] === "--apply") {
     await applyUpdate(context);
+    return;
+  }
+
+  if (args[0] === "--review") {
+    await reviewUpdate(context);
+    return;
+  }
+
+  if (args[0] === "--merge") {
+    await mergeUpdate(context);
     return;
   }
 
@@ -58,6 +83,7 @@ async function applyUpdate(context) {
   const skillSummaries = await collectSkillSummaries(context.paths.skills);
   const { runId, runPath } = await createRunDirectory(context.paths.runs);
   const gitRepo = await isGitRepo(context.paths.root);
+  const branchContext = gitRepo ? await ensureUpdateBranch(context.paths.root, runId) : null;
   const gitStatus = await getGitStatus(context.paths.root);
   const currentBranch = gitRepo ? await getCurrentBranch(context.paths.root) : "";
   const headCommit = gitRepo ? await getHeadCommit(context.paths.root) : "";
@@ -94,7 +120,9 @@ async function applyUpdate(context) {
       available: gitRepo,
       branch: currentBranch,
       head: headCommit,
-      status: gitStatus.ok ? gitStatus.output : gitStatus.error
+      status: gitStatus.ok ? gitStatus.output : gitStatus.error,
+      branch_created: branchContext?.created ?? false,
+      branch_from: branchContext?.from ?? ""
     },
     counts: {
       staged_files: stagedTexts.length,
@@ -114,6 +142,7 @@ async function applyUpdate(context) {
       updated_at: new Date().toISOString()
     }
   });
+
   const execution = await executePlan({
     runPath,
     plan,
@@ -130,6 +159,7 @@ async function applyUpdate(context) {
       });
     }
   });
+
   const validation = await validateRepo(context.paths);
   const archivedPath = await archiveStaging(context.paths.staging, context.paths.archiveStaging, runId, {
     status: execution.ok ? "executed" : "failed",
@@ -140,16 +170,7 @@ async function applyUpdate(context) {
     execution,
     validation
   });
-  await updateRunManifest(runPath, {
-    state: {
-      status: execution.ok ? "executed" : "failed",
-      archived_staging_path: archivedPath,
-      updated_at: new Date().toISOString()
-    },
-    plan: await readTodo(runPath),
-    execution,
-    validation
-  });
+
   await writeChangesSummary(runPath, {
     mode: "update",
     runId,
@@ -162,6 +183,40 @@ async function applyUpdate(context) {
     completedSteps: execution.completedSteps,
     validationOk: validation.ok
   });
+
+  let commitMessage = "";
+  let committed = false;
+  if (gitRepo) {
+    commitMessage = await loadCommitMessage(runPath);
+    if (await hasTrackedChanges(context.paths.root)) {
+      await stageAll(context.paths.root);
+      await commitAll(context.paths.root, commitMessage);
+      committed = true;
+    }
+  }
+
+  const finalBranch = gitRepo ? await getCurrentBranch(context.paths.root) : "";
+  const finalHead = gitRepo ? await getHeadCommit(context.paths.root) : "";
+  const finalStatus = gitRepo ? await getGitStatus(context.paths.root) : { ok: false, output: "", error: "" };
+
+  await updateRunManifest(runPath, {
+    state: {
+      status: execution.ok ? "executed" : "failed",
+      archived_staging_path: archivedPath,
+      updated_at: new Date().toISOString()
+    },
+    plan: await readTodo(runPath),
+    execution,
+    validation,
+    git: {
+      available: gitRepo,
+      branch: finalBranch,
+      head: finalHead,
+      status: finalStatus.ok ? finalStatus.output : finalStatus.error,
+      committed
+    }
+  });
+
   await writeSummary(runPath, {
     mode: "update",
     run_id: runId,
@@ -172,13 +227,15 @@ async function applyUpdate(context) {
     archived_staging_path: archivedPath,
     execution_mode: execution.mode,
     planner_mode: plannerMode,
-    next_step: "Replace heuristic planning and execution with LLM-backed planning, review, and git commits."
+    git_branch: finalBranch,
+    committed
   });
 
   context.stdout.write(`Created run artifacts in ${runPath}\n`);
   context.stdout.write(`Validated repository: ${validation.ok ? "ok" : "failed"}\n`);
   if (gitRepo) {
-    context.stdout.write(`Git branch: ${currentBranch || "(detached)"}\n`);
+    context.stdout.write(`Git branch: ${finalBranch || "(detached)"}\n`);
+    context.stdout.write(`Committed: ${committed ? "yes" : "no"}\n`);
   } else {
     context.stdout.write("Git: not available in the data repository\n");
   }
@@ -192,4 +249,60 @@ async function applyUpdate(context) {
   if (execution.notes.length > 0) {
     context.stdout.write(`Notes: ${execution.notes.join(" | ")}\n`);
   }
+}
+
+async function reviewUpdate(context) {
+  const currentBranch = await getCurrentBranch(context.paths.root);
+  if (!currentBranch || currentBranch === MAIN_BRANCH) {
+    throw new Error("update --review requires an active update branch; current branch is main");
+  }
+
+  const diff = await diffAgainstMain(context.paths.root);
+  context.stdout.write(`# Review\n\n`);
+  context.stdout.write(`Branch: ${currentBranch}\n`);
+  context.stdout.write(`Base: ${MAIN_BRANCH}\n\n`);
+  if (!diff.trim()) {
+    context.stdout.write("No diff against main.\n");
+    return;
+  }
+  context.stdout.write(diff);
+  if (!diff.endsWith("\n")) {
+    context.stdout.write("\n");
+  }
+}
+
+async function mergeUpdate(context) {
+  const currentBranch = await getCurrentBranch(context.paths.root);
+  if (!currentBranch || currentBranch === MAIN_BRANCH) {
+    throw new Error("update --merge requires an active update branch; current branch is main");
+  }
+
+  await mergeCurrentBranchIntoMain(context.paths.root, currentBranch);
+  const headCommit = await getHeadCommit(context.paths.root);
+  context.stdout.write(`Merged ${currentBranch} into ${MAIN_BRANCH}\n`);
+  context.stdout.write(`Current branch: ${await getCurrentBranch(context.paths.root)}\n`);
+  context.stdout.write(`Head: ${headCommit}\n`);
+}
+
+async function ensureUpdateBranch(repoRoot, runId) {
+  const currentBranch = await getCurrentBranch(repoRoot);
+  if (currentBranch && currentBranch !== MAIN_BRANCH) {
+    return {
+      created: false,
+      from: MAIN_BRANCH,
+      branch: currentBranch
+    };
+  }
+  const branchName = createUpdateBranchName(runId);
+  await createBranchFromMain(repoRoot, branchName);
+  return {
+    created: true,
+    from: MAIN_BRANCH,
+    branch: branchName
+  };
+}
+
+async function loadCommitMessage(runPath) {
+  const raw = await readFile(path.join(runPath, "commit-message.txt"), "utf8");
+  return raw.trim();
 }

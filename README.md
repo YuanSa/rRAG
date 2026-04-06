@@ -48,11 +48,14 @@ node ./bin/rrag.js --help
 node ./bin/rrag.js update "A note to learn later"
 node ./bin/rrag.js update --file ./some-docs
 node ./bin/rrag.js update --apply
+node ./bin/rrag.js update --review
+node ./bin/rrag.js update --merge
 node ./bin/rrag.js ask "What does the repo know?"
 node ./bin/rrag.js rebuild --dry-run
 node ./bin/rrag.js resume 2026-03-30T16-22-24.637Z
 node ./bin/rrag.js runs
 node ./bin/rrag.js status
+node ./bin/rrag.js clear
 ```
 
 If you want to use a custom shared data root:
@@ -146,7 +149,8 @@ Implemented today:
 - run history inspection with `rrag runs`
 - `rrag runs` now shows completed step counts so execution progress is easier to inspect
 - persisted ask traces and answers under `runs/`
-- git environment discovery for future branch/commit orchestration
+- shared knowledge data now lives under `~/.rrag` by default, with its own git repository
+- data-repo gitignore now excludes `staging/`, `runs/`, and `archive/`
 - TODO artifact formatting that is ready for step-by-step execution later
 - heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills
 - deterministic skill retrieval from title/summary plus extracted matching passages
@@ -159,17 +163,21 @@ Implemented today:
 - rebuild can now propose and execute removal of empty category directories
 - unlink operations now prune empty category directories so taxonomy cleanup leaves fewer empty shells
 - delete command that archives a skill and removes its category links
+- clear command that removes staging, archived staging snapshots, and run artifacts
 - status command for quick repository introspection
 - ask output now distinguishes real linked category paths from traversal paths used during retrieval
 - optional model-backed planning and answer synthesis with automatic heuristic fallback
 - resumable execution for planned runs that still have pending TODO items
+- update apply now creates or reuses an update branch in the data repo and commits the resulting knowledge changes
+- update review now shows the current update branch diff against `main`
+- update merge now merges the current update branch into `main` and switches back
 
 Still placeholder:
 
-- LLM planning
-- fully semantic planner/executor behavior beyond branch selection
+- fully semantic planner/executor behavior beyond the current conservative update flow
 - git commit-per-TODO execution and PR orchestration
-- git branch / commit orchestration during apply and rebuild
+- update-branch cleanup after merge
+- branch / commit orchestration during rebuild
 
 ## Spec
 

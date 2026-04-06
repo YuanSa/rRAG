@@ -1,8 +1,8 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_CONFIG, loadConfig, saveConfig } from "./config.js";
-import { ensureGitRepo } from "./git.js";
+import { ensureGitRepo, ensureInitialCommit } from "./git.js";
 import { createLlmClient } from "./llm.js";
 
 const REQUIRED_DIRS = [
@@ -25,10 +25,12 @@ export async function createRepoContext({ cwd, stdout, stderr }) {
 
   const configPath = path.join(dataRoot, "config.json");
   const config = await loadConfig(configPath);
+  await ensureDataGitignore(path.join(dataRoot, ".gitignore"));
 
   if (JSON.stringify(config) === JSON.stringify(DEFAULT_CONFIG)) {
     await saveConfig(configPath, config);
   }
+  await ensureInitialCommit(dataRoot);
 
   return {
     cwd,
@@ -57,4 +59,20 @@ function resolveDataRoot(env) {
     return path.resolve(configured);
   }
   return path.join(os.homedir(), ".rrag");
+}
+
+async function ensureDataGitignore(gitignorePath) {
+  const desired = ["archive/", "runs/", "staging/"].join("\n");
+  try {
+    const existing = await readFile(gitignorePath, "utf8");
+    const normalized = existing.trim().replace(/\r\n/g, "\n");
+    if (normalized === desired) {
+      return;
+    }
+  } catch (error) {
+    if (!(error && error.code === "ENOENT")) {
+      throw error;
+    }
+  }
+  await writeFile(gitignorePath, `${desired}\n`, "utf8");
 }

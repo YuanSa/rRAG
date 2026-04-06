@@ -1,4 +1,5 @@
 import { handleAsk } from "./commands/ask.js";
+import { handleClear } from "./commands/clear.js";
 import { handleConfig } from "./commands/config.js";
 import { handleDelete } from "./commands/delete.js";
 import { handleRebuild } from "./commands/rebuild.js";
@@ -46,6 +47,9 @@ export async function runCli(argv, options = {}) {
       return;
     case "config":
       await handleConfig(rest, context);
+      return;
+    case "clear":
+      await handleClear(rest, context);
       return;
     default:
       throw new Error(`unknown command "${command}"\n\n${formatHelp()}`);

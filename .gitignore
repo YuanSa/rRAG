@@ -1,4 +1,7 @@
+categories/
+config.json
 archive/
 runs/
+skills/
 staging/
 node_modules/
