@@ -1,6 +1,6 @@
 # rrag
 
-[English](../README.md) | 简体中文
+[English](README.en.md) | 简体中文
 
 `rrag` 是一个本地命令行知识库工具。
 
@@ -78,7 +78,6 @@ rrag delete <skill_id>
 
 ## 更多文档
 
-- [English README](../README.md)
 - [English README copy](README.en.md)
 - [Spec](spec.md)
 - [示例测试用例](../examples/test-cases/README.md)

@@ -1,10 +1,6 @@
 # rrag
 
-[English](../README.md) | [简体中文](README.zh-CN.md)
-
-This is the English README copy for `rrag`.
-
-For the GitHub homepage version, see the root [README.md](../README.md).
+English | [简体中文](README.zh-CN.md)
 
 ## Quick Start
 
@@ -48,7 +44,6 @@ rrag delete <skill_id>
 
 ## More
 
-- [Root English README](../README.md)
 - [Chinese README](README.zh-CN.md)
 - [Spec](spec.md)
 - [Example test cases](../examples/test-cases/README.md)
