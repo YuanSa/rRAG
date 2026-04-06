@@ -24,7 +24,7 @@ Instead of relying on vector similarity first, it organizes and retrieves knowle
 
 ## Quick Start
 
-### 1. Install
+### 1. Install and initialize
 
 Requirements:
 
@@ -42,52 +42,49 @@ Check that the command is available:
 rrag --help
 ```
 
-### 2. Initialize the model connection
-
 ```bash
 rrag init
 ```
 
-`init` is interactive. It asks for:
+`init` is interactive. It guides you through the model connection setup and supports local Ollama.
 
-- LLM provider
-- base URL
-- model
-- API key env var
+### 2. Try the core workflow
 
-If a config already exists, current values are used as defaults.
+First, ask a question:
 
-### 3. Try the smallest possible flow
+```bash
+rrag ask "How should traversal branch budgets be controlled?"
+```
 
-Add a single piece of knowledge:
+Since the knowledge base is still empty, no answer is expected yet.
+
+Now add that piece of knowledge:
 
 ```bash
 rrag update "Beam search should keep traversal branch budgets small."
 ```
 
-Apply the staged update:
+Then run the full update flow:
 
 ```bash
 rrag update --apply
-```
-
-Review what changed:
-
-```bash
 rrag update --review
-```
-
-Merge it into `main`:
-
-```bash
 rrag update --merge
 ```
 
-Now ask a question:
+`rrag update --apply` integrates the staged knowledge into the current knowledge base.  
+`rrag update --review` lets you inspect the diff between this update branch and `main`.  
+`rrag update --merge` merges the reviewed update back into `main`.
+
+Now ask the same question again:
 
 ```bash
 rrag ask "How should traversal branch budgets be controlled?"
 ```
+
+At this point, `rrag` should be able to answer it.
+
+`rrag update` can be used multiple times before `--apply`, and it also supports importing files directly with `--file <file_path>`.
 
 ## Typical Use Cases
 
