@@ -1,13 +1,54 @@
 # rrag
 
-`rrag` is a local CLI prototype for a filesystem-based, LLM-driven hierarchical knowledge system.
+`rrag` 是一个本地命令行知识库工具。
 
-Runtime knowledge data is stored outside this code repository by default:
+它不用向量库，而是把知识维护成一个可读的文件系统结构：
 
-- default data root: `~/.rrag`
-- override with: `RRAG_HOME=/some/path`
+- `skills/` 存放知识内容
+- `categories/` 存放分类树
+- `staging/` 存放待学习材料
 
-That shared data root contains:
+检索和整理主要依赖 LLM 的分类、规划和推理能力。
+
+## 安装
+
+要求：
+
+- Node.js `>= 18`
+
+在仓库根目录安装成全局命令：
+
+```bash
+npm install -g .
+```
+
+安装后可以直接使用：
+
+```bash
+rrag --help
+```
+
+如果你只想在当前仓库里临时开发测试，也可以用：
+
+```bash
+npm link
+```
+
+## 数据目录
+
+`rrag` 的运行数据默认不放在当前代码仓库里，而是放在：
+
+```bash
+~/.rrag
+```
+
+也可以通过环境变量覆盖：
+
+```bash
+RRAG_HOME=~/.rrag-demo rrag status
+```
+
+数据目录里通常会有：
 
 - `skills/`
 - `categories/`
@@ -16,125 +57,221 @@ That shared data root contains:
 - `runs/`
 - `config.json`
 
-The data root is managed as its own git repository, separate from this source repo.
+这个目录本身会被初始化成一个独立 git 仓库，用来管理知识库变更。
 
-The current codebase provides:
+## 3 分钟上手
 
-- repository bootstrap for `skills/`, `categories/`, `staging/`, `archive/`, and `runs/`
-- a runnable `rrag` CLI
-- staging ingestion via text or copied files
-- deterministic `update --apply`, `ask`, and `rebuild` starter flows
-- run artifact generation for TODO/review/summary files
-- executed runs now also persist `steps.jsonl`, a per-TODO action log for later diff/commit orchestration
-- executed runs now also generate `changes.md`, a readable change summary derived from the step log
-- executed runs now also generate `commit-message.txt` and `pr-summary.md` drafts from the same step log
-- update runs now also generate `decisions.md`, a readable record of planner decisions and rationales
-- run manifests with git environment metadata and parseable TODO items
-- ask runs persisted with `answer.md`, `run.json`, and `summary.json`
-- heuristic ask retrieval over skill summaries plus passage extraction
-- heuristic category-guided traversal before skill passage extraction
-- traversal budgeting now respects `max_total_nodes` and records when a search is truncated
-- traversal now caches subtree hints during a run and exposes cache hit/miss signals in ask history
-- heuristic update planning that can create or update skills and add category links
-- LLM update planning now gets related skill excerpts, category reuse context, and decision rationales
-- soft-delete via archiving skills out of the active knowledge base
-- optional remote and local LLM integration for planning, review, grounded answers, and branch selection
-- taxonomy-aware status reporting with depth, leaf-category, and redundant-link signals
-
-## Quick Start
+1. 初始化配置
 
 ```bash
-node ./bin/rrag.js --help
-node ./bin/rrag.js update "A note to learn later"
-node ./bin/rrag.js update --file ./some-docs
-node ./bin/rrag.js update --apply
-node ./bin/rrag.js update --review
-node ./bin/rrag.js update --merge
-node ./bin/rrag.js ask "What does the repo know?"
-node ./bin/rrag.js ask --explain "What does the repo know?"
-node ./bin/rrag.js rebuild --dry-run
-node ./bin/rrag.js init
-node ./bin/rrag.js resume 2026-03-30T16-22-24.637Z
-node ./bin/rrag.js runs
-node ./bin/rrag.js status
-node ./bin/rrag.js clear
+rrag init
 ```
 
-If you want to use a custom shared data root:
-
-```bash
-RRAG_HOME=~/.rrag-demo node ./bin/rrag.js status
-```
-
-`node ./bin/rrag.js init` launches an interactive setup guide in a real terminal. It uses your current config as defaults when one exists, and recommended defaults for a fresh setup. For scripted changes, use `config --file` or `config set`.
-
-## Demo Test Cases
-
-The fastest way to see the prototype work end-to-end is:
-
-```bash
-npm run demo:testcases
-```
-
-This runs in an isolated temporary workspace and will:
-
-- ingest the numbered sample files under [examples/test-cases](/Users/yangzihan/Projects/rrag/examples/test-cases)
-- run `update --apply`
-- ask a couple of retrieval questions
-- run `rebuild --dry-run`
-- print `status` and recent `runs`
-
-If you want to run the same cases manually, see [examples/test-cases/README.md](/Users/yangzihan/Projects/rrag/examples/test-cases/README.md).
-
-## Optional LLM Mode
-
-The prototype now supports:
-
-- remote OpenAI-compatible chat endpoints
-- local Ollama servers
-- local `llama.cpp` HTTP servers
-
-Example:
-
-```bash
-export OPENAI_API_KEY=...
-node ./bin/rrag.js init
-node ./bin/rrag.js update --apply
-```
-
-Ollama example:
-
-```bash
-node ./bin/rrag.js init
-node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
-```
-
-`llama.cpp` server example:
-
-```bash
-node ./bin/rrag.js init
-node ./bin/rrag.js ask "How should traversal cost be narrowed in retrieval systems?"
-```
-
-You can also import an existing JSON file directly:
-
-```bash
-node ./bin/rrag.js config --file ./config/rrag.local.json
-node ./bin/rrag.js config show
-```
-
-It now only asks for:
+`init` 是交互式引导。现在它只会问：
 
 - LLM provider
 - base URL
 - model
 - API key env var
 
-Other config values keep their current values or recommended defaults.
+如果已经存在配置，当前配置会作为默认值；如果是全新环境，会使用推荐默认值。
 
-For fresh setups, the recommended defaults keep `runs` and `archive` disabled, set `ask_no_answer_behavior` to `error`, and use local Ollama defaults for the LLM connection.
+2. 添加一条待学习内容
 
-Relevant config keys:
+```bash
+rrag update "Beam search should keep traversal branch budgets small."
+```
+
+3. 正式学习
+
+```bash
+rrag update --apply
+```
+
+4. 查看当前更新分支相对 `main` 的差异
+
+```bash
+rrag update --review
+```
+
+5. 合并到 `main`
+
+```bash
+rrag update --merge
+```
+
+6. 提问验证
+
+```bash
+rrag ask "How should traversal branch budgets be controlled?"
+```
+
+## 核心命令
+
+### 学习知识
+
+把一句话放进 `staging/`：
+
+```bash
+rrag update "A note to learn later"
+```
+
+把文件或目录复制到 `staging/`：
+
+```bash
+rrag update --file ./docs/some-note.md
+rrag update --file ./docs/
+```
+
+执行学习：
+
+```bash
+rrag update --apply
+```
+
+查看当前 update 分支对 `main` 的 diff：
+
+```bash
+rrag update --review
+```
+
+把当前 update 分支合并回 `main`：
+
+```bash
+rrag update --merge
+```
+
+### 提问
+
+默认只输出最终答案：
+
+```bash
+rrag ask "What does the repo know about traversal?"
+```
+
+查看解释信息、分类过程和命中证据：
+
+```bash
+rrag ask --explain "What does the repo know about traversal?"
+```
+
+### 重建分类结构
+
+先看计划，不执行：
+
+```bash
+rrag rebuild --dry-run
+```
+
+执行保守重建：
+
+```bash
+rrag rebuild
+```
+
+### 配置
+
+查看当前配置：
+
+```bash
+rrag config show
+```
+
+设置单个配置项：
+
+```bash
+rrag config set llm_provider ollama
+rrag config set llm_base_url http://127.0.0.1:11434
+rrag config set llm_model qwen2.5:7b
+```
+
+从已有 JSON 文件导入配置：
+
+```bash
+rrag config --file ./config/rrag.local.json
+```
+
+### 运行记录与状态
+
+查看整体状态：
+
+```bash
+rrag status
+```
+
+查看最近的 run：
+
+```bash
+rrag runs
+rrag runs 10
+```
+
+恢复一个未完成 run：
+
+```bash
+rrag resume <run_id>
+```
+
+清理缓存、归档和运行记录：
+
+```bash
+rrag clear
+```
+
+### 删除 skill
+
+```bash
+rrag delete <skill_id>
+```
+
+这是软删除，会移除活动链接并归档 skill，而不是直接硬删。
+
+## 推荐配置方式
+
+### 本地 Ollama
+
+先启动 Ollama 和模型，再运行：
+
+```bash
+rrag init
+```
+
+在引导里填：
+
+- provider: `ollama`
+- base URL: `http://127.0.0.1:11434`
+- model: 比如 `qwen2.5:7b`
+
+### 本地 llama.cpp
+
+```bash
+rrag init
+```
+
+在引导里填：
+
+- provider: `llama.cpp`
+- base URL: 例如 `http://127.0.0.1:8080/v1`
+- model: 你的本地模型名
+
+### OpenAI-compatible 服务
+
+先设置 API key 环境变量，然后：
+
+```bash
+rrag init
+```
+
+在引导里填：
+
+- provider: `openai-compatible`
+- base URL: 例如 `https://api.openai.com/v1`
+- model: 比如 `gpt-4.1-mini`
+- API key env var: 比如 `OPENAI_API_KEY`
+
+## 重要配置项
+
+常见配置项包括：
 
 - `llm_provider`
 - `llm_base_url`
@@ -142,60 +279,51 @@ Relevant config keys:
 - `llm_api_key_env`
 - `runs_enabled`
 - `archive_enabled`
-- `ask_no_answer_behavior` (`error`, `reply`, or `blank`)
+- `ask_no_answer_behavior`
 - `branch_max_per_level`
 - `branch_min_score`
 - `branch_score_margin`
 
-If the configured model request fails, the code falls back to deterministic heuristic behavior where supported.
+其中：
 
-## Current Status
+- `ask_no_answer_behavior` 支持：
+  - `error`
+  - `reply`
+  - `blank`
 
-This is an executable scaffold, not the final system.
+默认推荐是 `error`，更适合脚本调用和自动化流程。
 
-Implemented today:
+## 当前行为特点
 
-- directory bootstrap
-- config loading and writing
-- staging text ingestion
-- filtered file copying into staging
-- run artifact generation
-- structured `plan.json` artifacts alongside human-readable `TODO.md`
-- resumable runs via `run.json` state tracking and `rrag resume <run_id>`
-- resume now reconstructs staged-to-skill mappings from prior completed TODO items so dependent link steps can continue safely
-- run history inspection with `rrag runs`
-- `rrag runs` now shows completed step counts so execution progress is easier to inspect
-- persisted ask traces and answers under `runs/`
-- shared knowledge data now lives under `~/.rrag` by default, with its own git repository
-- data-repo gitignore now excludes `staging/`, `runs/`, and `archive/`
-- TODO artifact formatting that is ready for step-by-step execution later
-- heuristic execution that can create categories, create skills, update skills, link skills, unlink skills, and archive skills
-- deterministic skill retrieval from title/summary plus extracted matching passages
-- category-guided traversal traces during ask
-- heuristic branch selection over category nodes before skill matching
-- heuristic nested category path inference such as `Retrieval/Traversal` and `Knowledge-Base/Taxonomy`
-- pluggable branch selector with optional LLM-assisted branch choice
-- LLM-guided category traversal now works when a remote or local provider is configured
-- rebuild planning with conservative cleanup suggestions and executable safe actions
-- rebuild can now propose and execute removal of empty category directories
-- unlink operations now prune empty category directories so taxonomy cleanup leaves fewer empty shells
-- delete command that archives a skill and removes its category links
-- clear command that removes staging, archived staging snapshots, and run artifacts
-- status command for quick repository introspection
-- ask output now distinguishes real linked category paths from traversal paths used during retrieval
-- optional model-backed planning and answer synthesis with automatic heuristic fallback
-- resumable execution for planned runs that still have pending TODO items
-- update apply now creates or reuses an update branch in the data repo and commits the resulting knowledge changes
-- update review now shows the current update branch diff against `main`
-- update merge now merges the current update branch into `main` and switches back
+现在这版已经支持：
 
-Still placeholder:
+- 用文件系统维护知识库
+- 用独立数据仓库管理知识变更
+- `update --apply` 走独立 update 分支并提交
+- `update --review` 查看相对 `main` 的 diff
+- `update --merge` 合并并切回 `main`
+- `ask` 默认只输出最终答案
+- `ask --explain` 查看证据和检索过程
+- 本地 Ollama / 本地 `llama.cpp` / OpenAI-compatible 服务
+- 可选的 `runs` 记录
+- 可选的 `archive` 归档
 
-- fully semantic planner/executor behavior beyond the current conservative update flow
-- git commit-per-TODO execution and PR orchestration
-- update-branch cleanup after merge
-- branch / commit orchestration during rebuild
+## Demo
+
+项目里带了一组可运行样例：
+
+```bash
+npm run demo:testcases
+```
+
+这会在隔离的临时 `RRAG_HOME` 下跑完整 demo，不会污染你自己的 `~/.rrag`。
+
+如果你想手动看样例输入，可以参考：
+
+- [examples/test-cases/README.md](/Users/yangzihan/Projects/rrag/examples/test-cases/README.md)
 
 ## Spec
 
-The current product spec lives in [README/spec.md](/Users/yangzihan/Projects/rrag/README/spec.md).
+产品 spec 在这里：
+
+- [README/spec.md](/Users/yangzihan/Projects/rrag/README/spec.md)
