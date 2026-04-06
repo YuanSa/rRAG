@@ -24,70 +24,55 @@
 
 ## 快速开始
 
-### 1. 安装
+### 1. 安装准备
 
-要求：
-
-- Node.js `>= 18`
-
-在仓库根目录执行：
+本地需要已安装 Node.js 环境。克隆本仓库后，在仓库根目录执行以下命令安装：
 
 ```bash
 npm install -g .
 ```
 
-确认命令可用：
-
-```bash
-rrag --help
-```
-
-### 2. 初始化模型配置
+之后即可在命令行使用 `rrag` APP 操作了。下面运行以下命令初始化工作区：
 
 ```bash
 rrag init
 ```
 
-`init` 是交互式引导，会询问：
+`init` 会引导你配置模型相关信息。支持使用本地 Ollama 模型。
 
-- LLM provider
-- base URL
-- model
-- API key env var
+### 2. 功能体验
 
-如果已有配置，会以当前配置为默认值。
+我们先问 `rrag` 一个问题：
 
-### 3. 最小化体验一遍
+```bash
+rrag ask "How should traversal branch budgets be controlled?"
+```
 
-先添加一条知识：
+此时因为 `rrag` 知识库中没有任何知识，他自然也不知道上述问题的答案，所以预期没有返回结果。
+
+现在，我们尝试添加这条知识：
 
 ```bash
 rrag update "Beam search should keep traversal branch budgets small."
 ```
 
-执行学习：
+然后依次执行下列命令来学习：
 
 ```bash
-rrag update --apply
+rrag update --apply  # 将刚才输入的知识整合进当前知识库
+rrag update --review # 检查这次知识更新和主分支的差异，确认变更符合预期
+rrag update --merge  # 确认当前整合内容无误，合并进主分支
 ```
 
-查看这次知识更新和 `main` 的差异：
-
-```bash
-rrag update --review
-```
-
-合并回 `main`：
-
-```bash
-rrag update --merge
-```
-
-然后提问验证：
+至此我们的 rrag 就学习到了上述内容。我们可以提问验证：
 
 ```bash
 rrag ask "How should traversal branch budgets be controlled?"
 ```
+
+此时 `rrag` 应该可以回答相应内容了。
+
+`rrag update` 支持多次添加内容、还支持 `--file <file_path>` 直接导入一个文件的内容作为新知识。
 
 ## 典型使用场景
 
@@ -130,7 +115,7 @@ rrag ask "What does the repo know about traversal?"
 
 ### 5. 调试召回过程
 
-如果你想看分类路径、命中 skill 和证据片段：
+如果你想看分类路径、命中 skill 和证据片段，可以在 `ask` 时添加 `--explain` 参数：
 
 ```bash
 rrag ask --explain "What does the repo know about traversal?"
@@ -215,6 +200,55 @@ RRAG_HOME=~/.rrag-demo rrag status
 - `error`
 - `reply`
 - `empty`
+
+更具体一点说：
+
+- `llm_provider`
+  指定模型服务类型。当前支持：
+  - `ollama`
+  - `llama.cpp`
+  - `openai-compatible`
+
+- `llm_base_url`
+  指定模型服务地址。
+  例如：
+  - Ollama 常见是 `http://127.0.0.1:11434`
+  - `llama.cpp` 常见是 `http://127.0.0.1:8080/v1`
+  - OpenAI-compatible 则可能是某个远程 API 地址
+
+- `llm_model`
+  指定实际使用的模型名。例如：
+  - `qwen2.5:7b`
+  - `gpt-4.1-mini`
+
+- `llm_api_key_env`
+  指定从哪个环境变量读取 API key。
+  如果你使用的是本地 Ollama，一般这个值虽然可以保留，但通常不会真的用到。
+
+- `runs_enabled`
+  是否记录运行过程到 `runs/`。
+  打开后更方便调试、回看 planner / ask 过程；关闭后更干净。
+
+- `archive_enabled`
+  是否在 `update --apply` 后把本次消费过的 `staging/` 输入归档到 `archive/`。
+  如果你更在意可追溯性，可以打开；如果你只想保持目录简洁，可以关闭。
+
+- `ask_no_answer_behavior`
+  控制 `ask` 在没有匹配到 skill，或无法得出最终答案时的行为：
+  - `error`：直接抛错
+  - `reply`：输出 `I don't know.`
+  - `empty`：不输出任何内容
+
+- `branch_max_per_level`
+  限制检索时每一层分类树最多继续展开多少个分支。
+  值越大，召回范围越宽；值越小，检索越保守。
+
+- `branch_min_score`
+  分类分支最低相关性阈值。低于这个分值的分支不会继续展开。
+
+- `branch_score_margin`
+  控制“与当前最佳分支相差多少仍然可以继续保留”。
+  值越大，越容易保留多个分支；值越小，越偏向只走最强分支。
 
 ## 全部命令
 
