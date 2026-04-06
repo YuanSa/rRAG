@@ -127,8 +127,9 @@ The interactive `init` flow now also asks whether you want to:
 
 - record run artifacts under `runs/`
 - archive consumed staging input under `archive/`
+- throw an error when `ask` cannot answer instead of returning `"I don't know"`
 
-For fresh setups, the recommended defaults keep both disabled.
+For fresh setups, the recommended defaults keep `runs` and `archive` disabled, while enabling errors for unanswered `ask` queries.
 
 Relevant config keys:
 
@@ -139,6 +140,7 @@ Relevant config keys:
 - `llm_api_key_env`
 - `runs_enabled`
 - `archive_enabled`
+- `ask_error_on_no_answer`
 - `branch_max_per_level`
 - `branch_min_score`
 - `branch_score_margin`

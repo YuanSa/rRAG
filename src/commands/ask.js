@@ -36,6 +36,9 @@ export async function handleAsk(args, context) {
       results,
       traversal: null
     });
+    if (context.config.ask_error_on_no_answer !== false) {
+      throw new Error(`ask could not find any matching skills for: ${question}`);
+    }
     context.stdout.write("I don't know.\n");
     if (explain) {
       context.stdout.write("\n# Explain\n\n");
@@ -53,6 +56,10 @@ export async function handleAsk(args, context) {
     results,
     traversal
   });
+
+  if (isNoAnswer(answer) && context.config.ask_error_on_no_answer !== false) {
+    throw new Error(`ask could not derive an answer from the matched skills for: ${question}`);
+  }
 
   context.stdout.write(`${answer}\n`);
 
@@ -113,6 +120,11 @@ export async function handleAsk(args, context) {
 
 function oneLine(text) {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function isNoAnswer(answer) {
+  const normalized = String(answer || "").trim().toLowerCase().replace(/[.!?]+$/g, "");
+  return normalized === "i don't know";
 }
 
 async function persistAskRun({ context, question, answer, results, traversal }) {

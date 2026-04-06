@@ -5,6 +5,7 @@ import { loadConfig, saveConfig } from "../lib/config.js";
 const RECOMMENDED_CONFIG = {
   runs_enabled: false,
   archive_enabled: false,
+  ask_error_on_no_answer: true,
   llm_enabled: true,
   llm_provider: "ollama",
   llm_base_url: "http://127.0.0.1:11434",
@@ -29,6 +30,7 @@ export async function handleInit(args, context) {
   context.stdout.write(`Initialized config at ${context.paths.config}\n`);
   context.stdout.write(`- runs_enabled: ${next.runs_enabled ? "true" : "false"}\n`);
   context.stdout.write(`- archive_enabled: ${next.archive_enabled ? "true" : "false"}\n`);
+  context.stdout.write(`- ask_error_on_no_answer: ${next.ask_error_on_no_answer ? "true" : "false"}\n`);
   context.stdout.write(`- llm_enabled: ${next.llm_enabled ? "true" : "false"}\n`);
   context.stdout.write(`- llm_provider: ${next.llm_provider}\n`);
   context.stdout.write(`- llm_base_url: ${next.llm_base_url}\n`);
@@ -60,6 +62,7 @@ async function promptForConfig(startingConfig, context) {
 
     const runsEnabled = await promptBoolean(rl, "Record run artifacts under runs/", startingConfig.runs_enabled);
     const archiveEnabled = await promptBoolean(rl, "Archive consumed staging inputs after update --apply", startingConfig.archive_enabled);
+    const askErrorOnNoAnswer = await promptBoolean(rl, "Throw an error when ask cannot find or infer an answer", startingConfig.ask_error_on_no_answer);
     const llmEnabled = await promptBoolean(rl, "Enable LLM features", startingConfig.llm_enabled);
     const provider = normalizeProvider(await promptText(rl, "LLM provider (ollama / llama.cpp / openai-compatible)", startingConfig.llm_provider));
 
@@ -71,6 +74,7 @@ async function promptForConfig(startingConfig, context) {
       ...startingConfig,
       runs_enabled: runsEnabled,
       archive_enabled: archiveEnabled,
+      ask_error_on_no_answer: askErrorOnNoAnswer,
       llm_enabled: llmEnabled,
       llm_provider: provider,
       llm_model: llmModel,

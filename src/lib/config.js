@@ -13,6 +13,7 @@ export const DEFAULT_CONFIG = {
   staging_max_total_files: 500,
   runs_enabled: true,
   archive_enabled: true,
+  ask_error_on_no_answer: true,
   llm_enabled: false,
   llm_provider: "openai-compatible",
   llm_base_url: "https://api.openai.com/v1",

@@ -29,6 +29,7 @@ Notes:
   - update --review shows the current branch diff against main in the data repo
   - update --merge merges the current update branch into main in the data repo
   - ask prints only the final answer by default; add --explain to include retrieval and evidence details
+  - ask throws on missing/insufficient answers by default; set ask_error_on_no_answer=false if you prefer "I don't know"
   - init runs an interactive setup only; existing config values become defaults, and fresh setups use recommended defaults
   - config --file loads an existing JSON config file into the shared data directory
   - clear removes staging/, runs/, and archive/ under the shared data directory
