@@ -8,6 +8,10 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 export async function handleRebuild(args, context) {
+  const unknownOption = args.find(arg => arg.startsWith("-") && arg !== "--dry-run");
+  if (unknownOption) {
+    throw new Error(`unknown rebuild option "${unknownOption}"`);
+  }
   const dryRun = args.includes("--dry-run");
   const runsEnabled = context.config.runs_enabled !== false;
   const skillSummaries = await collectSkillSummaries(context.paths.skills);

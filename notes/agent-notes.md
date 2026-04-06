@@ -81,6 +81,7 @@ These are the highest-value missing pieces:
 - Persist a dedicated `plan.json` artifact so plan data survives independent of markdown formatting.
 - Add a repository status command to inspect skills, categories, active links, and archived items.
 - Improve rebuild cleanup rules so ancestor fallback links can be removed when a deeper category path already exists for the same skill.
+- Add a higher-level input sanity layer so suspicious free-text update inputs such as flag-like strings (`--aply`) trigger a clarification request instead of being blindly treated as knowledge content.
 
 ### Medium-Term
 

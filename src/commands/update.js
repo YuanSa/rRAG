@@ -41,16 +41,25 @@ export async function handleUpdate(args, context) {
   }
 
   if (args[0] === "--apply") {
+    if (args.length !== 1) {
+      throw new Error("update --apply does not accept additional arguments");
+    }
     await applyUpdate(context);
     return;
   }
 
   if (args[0] === "--review") {
+    if (args.length !== 1) {
+      throw new Error("update --review does not accept additional arguments");
+    }
     await reviewUpdate(context);
     return;
   }
 
   if (args[0] === "--merge") {
+    if (args.length !== 1) {
+      throw new Error("update --merge does not accept additional arguments");
+    }
     await mergeUpdate(context);
     return;
   }
@@ -60,10 +69,18 @@ export async function handleUpdate(args, context) {
     if (!sourcePath) {
       throw new Error("update --file requires a path");
     }
+    if (args.length !== 2) {
+      throw new Error("update --file accepts exactly one path");
+    }
     const absolutePath = path.resolve(context.cwd, sourcePath);
     const result = await copyPathToStaging(absolutePath, context.paths.staging, context.config);
     context.stdout.write(`Copied into staging: ${result.destination}\n`);
     return;
+  }
+
+  const unknownOption = args.find(arg => arg.startsWith("-"));
+  if (unknownOption) {
+    throw new Error(`unknown update option "${unknownOption}"`);
   }
 
   const text = args.join(" ").trim();

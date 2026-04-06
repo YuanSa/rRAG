@@ -11,6 +11,9 @@ export async function handleResume(args, context) {
   if (!runId) {
     throw new Error("resume requires a run id, e.g. rrag resume 2026-03-30T02-28-24.304Z");
   }
+  if (args.length !== 1) {
+    throw new Error("resume accepts exactly one run id");
+  }
 
   const runPath = `${context.paths.runs}/${runId}`;
   const manifest = await readRunManifest(runPath);

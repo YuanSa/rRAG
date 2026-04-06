@@ -1,6 +1,9 @@
 import { collectRepoStatus } from "../lib/status.js";
 
-export async function handleStatus(_args, context) {
+export async function handleStatus(args, context) {
+  if (args.length > 0) {
+    throw new Error("status does not accept any arguments");
+  }
   const status = await collectRepoStatus(context.paths);
 
   context.stdout.write("# Status\n\n");

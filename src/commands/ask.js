@@ -3,6 +3,10 @@ import { synthesizeGroundedAnswer } from "../lib/answer.js";
 import { createRunDirectory, writeMarkdownArtifact, writeRunManifest, writeSummary } from "../lib/run-artifacts.js";
 
 export async function handleAsk(args, context) {
+  const unknownOption = args.find(arg => arg.startsWith("-") && arg !== "--explain");
+  if (unknownOption) {
+    throw new Error(`unknown ask option "${unknownOption}"`);
+  }
   const explain = args.includes("--explain");
   const filteredArgs = args.filter(arg => arg !== "--explain");
   const question = filteredArgs.join(" ").trim();

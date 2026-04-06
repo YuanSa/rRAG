@@ -1,7 +1,10 @@
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 
-export async function handleClear(_args, context) {
+export async function handleClear(args, context) {
+  if (args.length > 0) {
+    throw new Error("clear does not accept any arguments");
+  }
   await rm(context.paths.staging, { recursive: true, force: true });
   await rm(context.paths.runs, { recursive: true, force: true });
   await rm(context.paths.archive, { recursive: true, force: true });
