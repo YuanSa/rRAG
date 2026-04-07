@@ -686,7 +686,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
 
       <Card
         className="console-card"
-        title={<SectionTitle icon={<IconSidebar />} title="Behavior" subtitle="User-visible defaults and operational toggles" />}
+        title={<SectionTitle icon={<IconSetting />} title="Behavior" subtitle="User-visible defaults and operational toggles" />}
       >
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
