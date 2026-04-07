@@ -302,7 +302,6 @@ export function App() {
               <GiAncientScrew />
             </div>
             <div>
-              <Text className="brand-kicker">local console</Text>
               <Title heading={5} className="brand-title">
                 RRAG
               </Title>
@@ -340,7 +339,6 @@ export function App() {
       <main className="content-area">
         <div className="content-header">
           <div>
-            <Text className="page-kicker">{activeItem.label}</Text>
             <Title heading={3} className="page-title">
               {pageTitle(activeView)}
             </Title>
