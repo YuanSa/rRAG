@@ -344,17 +344,6 @@ export function App() {
             </Title>
             <Paragraph className="page-copy">{pageDescription(activeView)}</Paragraph>
           </div>
-          <Space wrap spacing={8}>
-            <Tag color={meta.data?.llmConfigured ? "green" : "red"}>
-              {meta.data?.llmConfigured ? `LLM ${meta.data.llmProvider}` : "LLM issue"}
-            </Tag>
-            <Tag color={meta.data?.runsEnabled ? "blue" : "grey"}>
-              Runs {meta.data?.runsEnabled ? "on" : "off"}
-            </Tag>
-            <Tag color={meta.data?.archiveEnabled ? "amber" : "grey"}>
-              Archive {meta.data?.archiveEnabled ? "on" : "off"}
-            </Tag>
-          </Space>
         </div>
 
         <Banner
@@ -369,11 +358,6 @@ export function App() {
             meta={meta}
             status={status}
             runs={runs}
-            loadingKey={loadingKey}
-            onRefreshMeta={() => void refreshMeta()}
-            onRefreshStatus={() => void refreshStatus()}
-            onRefreshRuns={() => void refreshRuns()}
-            onRebuild={() => void handleRebuild()}
           />
         )}
 
@@ -426,30 +410,18 @@ export function App() {
   );
 }
 
-function StatusView({ meta, status, runs, loadingKey, onRefreshMeta, onRefreshStatus, onRefreshRuns, onRebuild }) {
+function StatusView({ meta, status, runs }) {
   return (
     <div className="page-stack">
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
-          <MetricCard
-            title="Data root"
-            value={meta.data?.dataRoot || "Loading..."}
-            extra={<Button icon={<IconRefresh />} onClick={onRefreshMeta}>Refresh</Button>}
-          />
+          <MetricCard title="Data root" value={meta.data?.dataRoot || "Loading..."} />
         </Col>
         <Col xs={24} md={8}>
-          <MetricCard
-            title="Model route"
-            value={meta.data ? `${meta.data.llmProvider} · ${meta.data.llmModel}` : "Loading..."}
-            extra={<Tag color={meta.data?.llmConfigured ? "green" : "red"}>{meta.data?.llmConfigured ? "configured" : "issue"}</Tag>}
-          />
+          <MetricCard title="Model route" value={meta.data ? `${meta.data.llmProvider} · ${meta.data.llmModel}` : "Loading..."} />
         </Col>
         <Col xs={24} md={8}>
-          <MetricCard
-            title="Background recording"
-            value={meta.data ? `runs ${meta.data.runsEnabled ? "on" : "off"} · archive ${meta.data.archiveEnabled ? "on" : "off"}` : "Loading..."}
-            extra={<Button loading={loadingKey === "rebuild"} onClick={onRebuild}>Rebuild dry run</Button>}
-          />
+          <MetricCard title="Background recording" value={meta.data ? `runs ${meta.data.runsEnabled ? "on" : "off"} · archive ${meta.data.archiveEnabled ? "on" : "off"}` : "Loading..."} />
         </Col>
       </Row>
 
@@ -458,7 +430,6 @@ function StatusView({ meta, status, runs, loadingKey, onRefreshMeta, onRefreshSt
           <Card
             className="console-card"
             title={<SectionTitle icon={<IconPulse />} title="Current status" subtitle="A concise health view of the repo, retrieval pipeline, and LLM route" />}
-            extra={<Button icon={<IconRefresh />} loading={loadingKey === "status"} onClick={onRefreshStatus}>Refresh</Button>}
           >
             <OutputBlock value={status} tall />
           </Card>
@@ -467,7 +438,6 @@ function StatusView({ meta, status, runs, loadingKey, onRefreshMeta, onRefreshSt
           <Card
             className="console-card"
             title={<SectionTitle icon={<IconTreeTriangleDown />} title="Recent runs" subtitle="A lightweight timeline of recent ask, update, and rebuild activity" />}
-            extra={<Button icon={<IconRefresh />} loading={loadingKey === "runs"} onClick={onRefreshRuns}>Refresh</Button>}
           >
             <OutputBlock value={runs} tall />
           </Card>
@@ -647,7 +617,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
         }
       >
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
+          <Col span={24}>
             <ConfigField
               label="LLM provider"
               help="Choose the backend your GUI and CLI should talk to."
@@ -660,21 +630,21 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
               }
             />
           </Col>
-          <Col xs={24} md={12}>
+          <Col span={24}>
             <ConfigField
               label="Model name"
               help="The model identifier used for ask, planning, and branch selection."
               control={<Input value={draft.llm_model} onChange={value => onChange("llm_model", value)} />}
             />
           </Col>
-          <Col xs={24} md={12}>
+          <Col span={24}>
             <ConfigField
               label="Base URL"
               help="Usually the local Ollama or llama.cpp endpoint, or a remote OpenAI-compatible endpoint."
               control={<Input value={draft.llm_base_url} onChange={value => onChange("llm_base_url", value)} />}
             />
           </Col>
-          <Col xs={24} md={12}>
+          <Col span={24}>
             <ConfigField
               label="API key env var"
               help="The environment variable name that stores the API key."
@@ -689,7 +659,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
         title={<SectionTitle icon={<IconSetting />} title="Behavior" subtitle="User-visible defaults and operational toggles" />}
       >
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
+          <Col span={24}>
             <ConfigField
               label="No-answer behavior"
               help="Decide whether ask should stay silent, reply with 'I don't know', or surface an error."
@@ -704,14 +674,14 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
               }
             />
           </Col>
-          <Col xs={24} md={6}>
+          <Col span={24}>
             <ConfigField
               label="Record runs"
               help="Keep run artifacts for debugging and history views."
               control={<Switch checked={Boolean(draft.runs_enabled)} onChange={value => onChange("runs_enabled", value)} />}
             />
           </Col>
-          <Col xs={24} md={6}>
+          <Col span={24}>
             <ConfigField
               label="Archive staging"
               help="Archive consumed staging inputs instead of clearing them directly."
@@ -726,42 +696,42 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
         title={<SectionTitle icon={<IconTreeTriangleDown />} title="Retrieval tuning" subtitle="Lower-priority tuning for branch expansion, depth, and passage collection" />}
       >
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={8}>
+          <Col span={24}>
             <ConfigField
               label="branch_max_per_level"
               help="How many category branches remain alive at each tree level."
               control={<Input value={String(draft.branch_max_per_level)} onChange={value => onChange("branch_max_per_level", toNumber(value, draft.branch_max_per_level))} />}
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col span={24}>
             <ConfigField
               label="branch_min_score"
               help="Minimum branch score before a category is explored further."
               control={<Input value={String(draft.branch_min_score)} onChange={value => onChange("branch_min_score", toNumber(value, draft.branch_min_score))} />}
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col span={24}>
             <ConfigField
               label="branch_score_margin"
               help="How far behind the best branch another branch may fall while still staying alive."
               control={<Input value={String(draft.branch_score_margin)} onChange={value => onChange("branch_score_margin", toNumber(value, draft.branch_score_margin))} />}
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col span={24}>
             <ConfigField
               label="max_depth"
               help="How deep retrieval may descend in the category tree."
               control={<Input value={String(draft.max_depth)} onChange={value => onChange("max_depth", toNumber(value, draft.max_depth))} />}
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col span={24}>
             <ConfigField
               label="max_total_nodes"
               help="Overall traversal budget across the retrieval pass."
               control={<Input value={String(draft.max_total_nodes)} onChange={value => onChange("max_total_nodes", toNumber(value, draft.max_total_nodes))} />}
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col span={24}>
             <ConfigField
               label="max_passages_per_skill"
               help="How many evidence passages to keep from each matched skill."
@@ -774,7 +744,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
   );
 }
 
-function MetricCard({ title, value, extra }) {
+function MetricCard({ title, value }) {
   return (
     <Card className="metric-card" shadows="hover">
       <Space vertical align="start" spacing="medium" className="full-width">
@@ -782,7 +752,6 @@ function MetricCard({ title, value, extra }) {
         <Text strong className="metric-value">
           {value}
         </Text>
-        {extra}
       </Space>
     </Card>
   );
