@@ -1,12 +1,19 @@
 {
-  "name": "rrag",
+  "name": "r-rag",
   "version": "0.1.0",
   "description": "LLM-driven hierarchical knowledge system using reasoning instead of embeddings",
   "license": "MIT",
-  "author": "YuanSa",
+  "author": {
+    "name": "YANG Zi Han",
+    "email": "yuansasi@outlook.com",
+    "url": "https://www.yangzihan.org"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/YuanSa/rRAG.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "homepage": "https://github.com/YuanSa/rRAG",
   "bugs": {
@@ -49,6 +56,8 @@
   "dependencies": {
     "@douyinfe/semi-icons": "^2.93.0",
     "@douyinfe/semi-ui": "^2.93.0",
+    "@monaco-editor/react": "^4.7.0",
+    "monaco-editor": "^0.55.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

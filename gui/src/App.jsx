@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import Editor from "@monaco-editor/react";
 import {
   Banner,
   Button,
   Card,
   Col,
+  Empty,
   Input,
-  Layout,
   Row,
   Select,
   Space,
   Spin,
   Switch,
-  Tabs,
   Tag,
   TextArea,
   Toast,
@@ -32,19 +32,13 @@ import {
   IconTreeTriangleDown
 } from "@douyinfe/semi-icons";
 
-const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 const NAV_ITEMS = [
-  { key: "status", label: "Status", icon: <IconPulse />, hint: "Repository health and recent activity" },
-  { key: "ask", label: "Ask", icon: <IconComment />, hint: "Grounded retrieval" },
-  { key: "update", label: "Update", icon: <IconArticle />, hint: "Stage, apply, review, and merge" },
-  { key: "config", label: "Config", icon: <IconSetting />, hint: "Runtime configuration" }
-];
-
-const UPDATE_TABS = [
-  { key: "staging", label: "Stage content" },
-  { key: "workflow", label: "Apply, review, merge" }
+  { key: "status", label: "Status", icon: <IconPulse />, hint: "Current repo health and recent activity" },
+  { key: "ask", label: "Ask", icon: <IconComment />, hint: "Grounded retrieval workspace" },
+  { key: "update", label: "Update", icon: <IconArticle />, hint: "Stage content and promote changes" },
+  { key: "config", label: "Config", icon: <IconSetting />, hint: "Model and runtime settings" }
 ];
 
 const NO_ANSWER_OPTIONS = [
@@ -55,7 +49,6 @@ const NO_ANSWER_OPTIONS = [
 
 export function App() {
   const [activeView, setActiveView] = useState("status");
-  const [updateTab, setUpdateTab] = useState("staging");
   const [meta, setMeta] = useState({ loading: true, data: null, error: "" });
   const [status, setStatus] = useState("Loading status...");
   const [runs, setRuns] = useState("Loading recent runs...");
@@ -77,6 +70,7 @@ export function App() {
     [activeView]
   );
   const health = deriveHealth({ meta, status });
+  const parsedReview = useMemo(() => splitReviewOutput(reviewOutput), [reviewOutput]);
 
   async function bootstrap() {
     await Promise.all([refreshMeta(), refreshStatus(), refreshRuns(), refreshConfig()]);
@@ -300,30 +294,21 @@ export function App() {
   }
 
   return (
-    <Layout className="console-shell">
-      <Header className="top-header">
-        <div className="brand-row">
-          <div className="logo-chip">
-            <IconSidebar />
+    <div className="dashboard-shell">
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <div className="logo-block">
+            <div className="logo-chip">
+              <IconSidebar />
+            </div>
+            <div>
+              <Text className="brand-kicker">rrag gui</Text>
+              <Title heading={5} className="brand-title">
+                Knowledge Console
+              </Title>
+            </div>
           </div>
-          <div>
-            <Text className="header-kicker">rrag gui</Text>
-            <Title heading={5} className="header-title">
-              Reasoning-native knowledge console
-            </Title>
-          </div>
-        </div>
 
-        <Tooltip content={health.tooltip} position="bottom">
-          <div className={`status-indicator status-${health.level}`}>
-            <IconCheckCircleStroked />
-            <span>{health.label}</span>
-          </div>
-        </Tooltip>
-      </Header>
-
-      <div className="main-frame">
-        <aside className="left-nav">
           <div className="nav-section">
             {NAV_ITEMS.map(item => (
               <button
@@ -340,98 +325,106 @@ export function App() {
               </button>
             ))}
           </div>
-        </aside>
+        </div>
 
-        <Content className="main-content">
-          <div className="page-header">
-            <div>
-              <Text className="page-kicker">{activeItem.label}</Text>
-              <Title heading={3} className="page-title">
-                {pageTitle(activeView, updateTab)}
-              </Title>
-              <Paragraph className="page-copy">{pageDescription(activeView, updateTab)}</Paragraph>
+        <div className="sidebar-bottom">
+          <Tooltip content={health.tooltip} position="right">
+            <div className={`status-indicator status-${health.level}`}>
+              <IconCheckCircleStroked />
+              <span>{health.label}</span>
             </div>
-            <Space wrap spacing={8}>
-              <Tag color={meta.data?.llmConfigured ? "green" : "red"}>
-                {meta.data?.llmConfigured ? `LLM ${meta.data.llmProvider}` : "LLM issue"}
-              </Tag>
-              <Tag color={meta.data?.runsEnabled ? "blue" : "grey"}>
-                Runs {meta.data?.runsEnabled ? "on" : "off"}
-              </Tag>
-              <Tag color={meta.data?.archiveEnabled ? "amber" : "grey"}>
-                Archive {meta.data?.archiveEnabled ? "on" : "off"}
-              </Tag>
-            </Space>
+          </Tooltip>
+        </div>
+      </aside>
+
+      <main className="content-area">
+        <div className="content-header">
+          <div>
+            <Text className="page-kicker">{activeItem.label}</Text>
+            <Title heading={3} className="page-title">
+              {pageTitle(activeView)}
+            </Title>
+            <Paragraph className="page-copy">{pageDescription(activeView)}</Paragraph>
           </div>
+          <Space wrap spacing={8}>
+            <Tag color={meta.data?.llmConfigured ? "green" : "red"}>
+              {meta.data?.llmConfigured ? `LLM ${meta.data.llmProvider}` : "LLM issue"}
+            </Tag>
+            <Tag color={meta.data?.runsEnabled ? "blue" : "grey"}>
+              Runs {meta.data?.runsEnabled ? "on" : "off"}
+            </Tag>
+            <Tag color={meta.data?.archiveEnabled ? "amber" : "grey"}>
+              Archive {meta.data?.archiveEnabled ? "on" : "off"}
+            </Tag>
+          </Space>
+        </div>
 
-          <Banner
-            type="info"
-            icon={<IconLightningStroked />}
-            closeIcon={null}
-            description="This console talks to the same shared data repo as the CLI, so web and terminal workflows stay in sync."
+        <Banner
+          type="info"
+          icon={<IconLightningStroked />}
+          closeIcon={null}
+          description="This console talks to the same shared data repo as the CLI, so web and terminal workflows stay synchronized."
+        />
+
+        {activeView === "status" && (
+          <StatusView
+            meta={meta}
+            status={status}
+            runs={runs}
+            loadingKey={loadingKey}
+            onRefreshMeta={() => void refreshMeta()}
+            onRefreshStatus={() => void refreshStatus()}
+            onRefreshRuns={() => void refreshRuns()}
+            onRebuild={() => void handleRebuild()}
           />
+        )}
 
-          {activeView === "status" && (
-            <StatusView
-              meta={meta}
-              status={status}
-              runs={runs}
-              loadingKey={loadingKey}
-              onRefreshMeta={() => void refreshMeta()}
-              onRefreshStatus={() => void refreshStatus()}
-              onRefreshRuns={() => void refreshRuns()}
-              onRebuild={() => void handleRebuild()}
-            />
-          )}
+        {activeView === "ask" && (
+          <AskView
+            question={question}
+            setQuestion={setQuestion}
+            explain={explain}
+            setExplain={setExplain}
+            askOutput={askOutput}
+            loading={loadingKey === "ask"}
+            onAsk={() => void handleAsk()}
+          />
+        )}
 
-          {activeView === "ask" && (
-            <AskView
-              question={question}
-              setQuestion={setQuestion}
-              explain={explain}
-              setExplain={setExplain}
-              askOutput={askOutput}
-              loading={loadingKey === "ask"}
-              onAsk={() => void handleAsk()}
-            />
-          )}
+        {activeView === "update" && (
+          <UpdateView
+            note={note}
+            setNote={setNote}
+            updateOutput={updateOutput}
+            reviewOutput={reviewOutput}
+            parsedReview={parsedReview}
+            loadingKey={loadingKey}
+            onStage={() => void handleStageNote()}
+            onApply={() => void handleApply()}
+            onReview={() => void handleReview()}
+            onMerge={() => void handleMerge()}
+          />
+        )}
 
-          {activeView === "update" && (
-            <UpdateView
-              updateTab={updateTab}
-              setUpdateTab={setUpdateTab}
-              note={note}
-              setNote={setNote}
-              updateOutput={updateOutput}
-              reviewOutput={reviewOutput}
-              loadingKey={loadingKey}
-              onStage={() => void handleStageNote()}
-              onApply={() => void handleApply()}
-              onReview={() => void handleReview()}
-              onMerge={() => void handleMerge()}
-            />
-          )}
-
-          {activeView === "config" && (
-            <ConfigView
-              configState={configState}
-              loadingKey={loadingKey}
-              onRefresh={() => void refreshConfig()}
-              onChange={(key, value) =>
-                setConfigState(current => ({
-                  ...current,
-                  draft: {
-                    ...(current.draft || {}),
-                    [key]: value
-                  }
-                }))
-              }
-              onSave={() => void handleConfigSave()}
-            />
-          )}
-        </Content>
-      </div>
-    </Layout>
+        {activeView === "config" && (
+          <ConfigView
+            configState={configState}
+            loadingKey={loadingKey}
+            onRefresh={() => void refreshConfig()}
+            onChange={(key, value) =>
+              setConfigState(current => ({
+                ...current,
+                draft: {
+                  ...(current.draft || {}),
+                  [key]: value
+                }
+              }))
+            }
+            onSave={() => void handleConfigSave()}
+          />
+        )}
+      </main>
+    </div>
   );
 }
 
@@ -466,7 +459,7 @@ function StatusView({ meta, status, runs, loadingKey, onRefreshMeta, onRefreshSt
         <Col xs={24} xl={12}>
           <Card
             className="console-card"
-            title={<SectionTitle icon={<IconPulse />} title="Current status" subtitle="Repo health, topology, retrieval, and LLM status" />}
+            title={<SectionTitle icon={<IconPulse />} title="Current status" subtitle="A concise health view of the repo, retrieval pipeline, and LLM route" />}
             extra={<Button icon={<IconRefresh />} loading={loadingKey === "status"} onClick={onRefreshStatus}>Refresh</Button>}
           >
             <OutputBlock value={status} tall />
@@ -475,7 +468,7 @@ function StatusView({ meta, status, runs, loadingKey, onRefreshMeta, onRefreshSt
         <Col xs={24} xl={12}>
           <Card
             className="console-card"
-            title={<SectionTitle icon={<IconTreeTriangleDown />} title="Recent runs" subtitle="The latest ask, update, and rebuild activity" />}
+            title={<SectionTitle icon={<IconTreeTriangleDown />} title="Recent runs" subtitle="A lightweight timeline of recent ask, update, and rebuild activity" />}
             extra={<Button icon={<IconRefresh />} loading={loadingKey === "runs"} onClick={onRefreshRuns}>Refresh</Button>}
           >
             <OutputBlock value={runs} tall />
@@ -515,12 +508,11 @@ function AskView({ question, setQuestion, explain, setExplain, askOutput, loadin
 }
 
 function UpdateView({
-  updateTab,
-  setUpdateTab,
   note,
   setNote,
   updateOutput,
   reviewOutput,
+  parsedReview,
   loadingKey,
   onStage,
   onApply,
@@ -528,56 +520,96 @@ function UpdateView({
   onMerge
 }) {
   return (
-    <Card
-      className="console-card"
-      title={<SectionTitle icon={<IconArticle />} title="Update workflow" subtitle="Keep staging and branch promotion separate, like a proper review-driven admin flow" />}
-    >
-      <Tabs activeKey={updateTab} onChange={setUpdateTab} type="line" className="update-tabs">
-        {UPDATE_TABS.map(tab => (
-          <Tabs.TabPane itemKey={tab.key} tab={tab.label} key={tab.key}>
-            {tab.key === "staging" ? (
-              <Space vertical align="start" className="full-width" spacing="medium">
-                <TextArea
-                  value={note}
-                  onChange={setNote}
-                  autosize={{ minRows: 8, maxRows: 16 }}
-                  placeholder="Paste a note, fact, or short document to stage into rrag..."
-                />
-                <div className="row-actions">
-                  <Text type="tertiary">Stage multiple notes first, then move to the workflow tab when you are ready to apply them.</Text>
-                  <Button type="primary" theme="solid" icon={<IconChecklistStroked />} loading={loadingKey === "update-note"} onClick={onStage}>
-                    Add to staging
-                  </Button>
-                </div>
-                <OutputBlock value={updateOutput} tall />
-              </Space>
-            ) : (
-              <Space vertical align="start" className="full-width" spacing="medium">
-                <Space wrap>
-                  <Button icon={<IconPulse />} loading={loadingKey === "update-apply"} onClick={onApply}>
-                    Apply staged update
-                  </Button>
-                  <Button icon={<IconBranch />} loading={loadingKey === "update-review"} onClick={onReview}>
-                    Review diff
-                  </Button>
-                  <Button type="secondary" theme="solid" loading={loadingKey === "update-merge"} onClick={onMerge}>
-                    Merge into main
-                  </Button>
-                </Space>
-                <Row gutter={[16, 16]} className="full-width">
-                  <Col xs={24} xl={12}>
-                    <OutputBlock value={updateOutput} tall />
-                  </Col>
-                  <Col xs={24} xl={12}>
-                    <OutputBlock value={reviewOutput} tall />
-                  </Col>
-                </Row>
-              </Space>
-            )}
-          </Tabs.TabPane>
-        ))}
-      </Tabs>
-    </Card>
+    <div className="page-stack">
+      <Card
+        className="console-card"
+        title={<SectionTitle icon={<IconChecklistStroked />} title="Stage content" subtitle="Collect new raw material into staging before you run the update workflow" />}
+      >
+        <Space vertical align="start" className="full-width" spacing="medium">
+          <TextArea
+            value={note}
+            onChange={setNote}
+            autosize={{ minRows: 8, maxRows: 16 }}
+            placeholder="Paste a note, fact, or short document to stage into rrag..."
+          />
+          <div className="row-actions">
+            <Text type="tertiary">This area is only for adding staging content. You can add several notes before applying them.</Text>
+            <Button type="primary" theme="solid" icon={<IconChecklistStroked />} loading={loadingKey === "update-note"} onClick={onStage}>
+              Add to staging
+            </Button>
+          </div>
+          <OutputBlock value={updateOutput} />
+        </Space>
+      </Card>
+
+      <Card
+        className="console-card"
+        title={<SectionTitle icon={<IconBranch />} title="Apply, review, merge" subtitle="Run the branch workflow end to end, then inspect the diff in an editor-style review panel" />}
+      >
+        <Space vertical align="start" className="full-width" spacing="medium">
+          <Space wrap>
+            <Button icon={<IconPulse />} loading={loadingKey === "update-apply"} onClick={onApply}>
+              Apply staged update
+            </Button>
+            <Button icon={<IconBranch />} loading={loadingKey === "update-review"} onClick={onReview}>
+              Review diff
+            </Button>
+            <Button type="secondary" theme="solid" loading={loadingKey === "update-merge"} onClick={onMerge}>
+              Merge into main
+            </Button>
+          </Space>
+
+          <Row gutter={[16, 16]} className="full-width">
+            <Col xs={24} xl={9}>
+              <OutputBlock value={updateOutput} tall />
+            </Col>
+            <Col xs={24} xl={15}>
+              <ReviewPanel reviewOutput={reviewOutput} parsedReview={parsedReview} />
+            </Col>
+          </Row>
+        </Space>
+      </Card>
+    </div>
+  );
+}
+
+function ReviewPanel({ reviewOutput, parsedReview }) {
+  const { header, diff } = parsedReview;
+
+  return (
+    <div className="review-shell">
+      <div className="review-header-copy">
+        <Text strong>Review output</Text>
+        <Text type="tertiary">Branch metadata stays readable above, while the diff body is rendered in a code-oriented editor.</Text>
+      </div>
+
+      {header ? (
+        <pre className="review-meta">{header}</pre>
+      ) : (
+        <div className="review-meta-empty">No branch review metadata yet.</div>
+      )}
+
+      <div className="editor-shell">
+        <Editor
+          height="420px"
+          defaultLanguage="diff"
+          language="diff"
+          value={diff || reviewOutput || "No diff loaded yet."}
+          options={{
+            readOnly: true,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            fontSize: 13,
+            wordWrap: "on",
+            lineNumbers: "on",
+            renderLineHighlight: "all",
+            folding: true,
+            glyphMargin: false
+          }}
+          theme="vs-dark"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -606,7 +638,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
     <div className="page-stack">
       <Card
         className="console-card"
-        title={<SectionTitle icon={<IconSetting />} title="Model connection" subtitle="The most important settings go first: provider, endpoint, model, and auth env var" />}
+        title={<SectionTitle icon={<IconSetting />} title="Model connection" subtitle="Most important first: provider, endpoint, model, and auth env var" />}
         extra={
           <Space>
             <Button icon={<IconRefresh />} onClick={onRefresh}>Reload</Button>
@@ -647,7 +679,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
           <Col xs={24} md={12}>
             <ConfigField
               label="API key env var"
-              help="The environment variable name that stores the API key. Local Ollama often leaves this unused."
+              help="The environment variable name that stores the API key."
               control={<Input value={draft.llm_api_key_env} onChange={value => onChange("llm_api_key_env", value)} />}
             />
           </Col>
@@ -693,7 +725,7 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
 
       <Card
         className="console-card"
-        title={<SectionTitle icon={<IconTreeTriangleDown />} title="Retrieval tuning" subtitle="Secondary settings for branch expansion, depth, and passage collection" />}
+        title={<SectionTitle icon={<IconTreeTriangleDown />} title="Retrieval tuning" subtitle="Lower-priority tuning for branch expansion, depth, and passage collection" />}
       >
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
@@ -820,18 +852,14 @@ function deriveHealth({ meta, status }) {
   };
 }
 
-function pageTitle(activeView, updateTab) {
-  if (activeView === "update" && updateTab === "staging") {
-    return "Stage new material";
-  }
-  if (activeView === "update" && updateTab === "workflow") {
-    return "Apply, review, and merge";
-  }
+function pageTitle(activeView) {
   switch (activeView) {
     case "status":
       return "Repository status";
     case "ask":
       return "Ask the knowledge base";
+    case "update":
+      return "Update workflow";
     case "config":
       return "Runtime configuration";
     default:
@@ -839,20 +867,16 @@ function pageTitle(activeView, updateTab) {
   }
 }
 
-function pageDescription(activeView, updateTab) {
-  if (activeView === "update" && updateTab === "staging") {
-    return "Add text into staging first. This page is only for gathering new material before you run the update workflow.";
-  }
-  if (activeView === "update" && updateTab === "workflow") {
-    return "Run the branch-based update flow: apply staged content, review the diff against main, and merge only after inspection.";
-  }
+function pageDescription(activeView) {
   switch (activeView) {
     case "status":
-      return "A concise but useful overview of the local repo health, recent runs, and core runtime state.";
+      return "A concise but useful view of repo health, model reachability, and recent execution history.";
     case "ask":
       return "Ask a grounded question and optionally inspect the retrieval path, matched skills, and evidence passages.";
+    case "update":
+      return "First add new material into staging, then apply, review, and merge the resulting branch changes from the same page.";
     case "config":
-      return "Put the most important settings first: model route, behavior toggles, and then lower-priority retrieval tuning.";
+      return "The most important settings come first: model route, visible behavior toggles, then lower-priority retrieval tuning.";
     default:
       return "";
   }
@@ -863,6 +887,29 @@ function renderResult(result) {
     return [result.error, result.stderr, result.stdout].filter(Boolean).join("\n\n");
   }
   return [result.stdout, result.stderr].filter(Boolean).join("\n").trim() || "Done.";
+}
+
+function splitReviewOutput(value) {
+  const text = String(value || "");
+  const marker = "\ndiff --git ";
+  const inlineMarkerIndex = text.indexOf("diff --git ");
+  if (inlineMarkerIndex === -1) {
+    return {
+      header: text.trim(),
+      diff: ""
+    };
+  }
+  const splitIndex = text.indexOf(marker);
+  if (splitIndex === -1) {
+    return {
+      header: "",
+      diff: text.trim()
+    };
+  }
+  return {
+    header: text.slice(0, splitIndex).trim(),
+    diff: text.slice(splitIndex + 1).trim()
+  };
 }
 
 async function api(url, options = {}) {
