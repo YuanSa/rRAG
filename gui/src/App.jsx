@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
+import { GiAncientScrew } from "react-icons/gi";
 import {
   Banner,
   Button,
@@ -28,7 +29,6 @@ import {
   IconPulse,
   IconRefresh,
   IconSetting,
-  IconSidebar,
   IconTreeTriangleDown
 } from "@douyinfe/semi-icons";
 
@@ -299,12 +299,12 @@ export function App() {
         <div className="sidebar-top">
           <div className="logo-block">
             <div className="logo-chip">
-              <IconSidebar />
+              <GiAncientScrew />
             </div>
             <div>
-              <Text className="brand-kicker">rrag gui</Text>
+              <Text className="brand-kicker">local console</Text>
               <Title heading={5} className="brand-title">
-                Knowledge Console
+                RRAG
               </Title>
             </div>
           </div>
