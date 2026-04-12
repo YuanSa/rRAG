@@ -29,7 +29,8 @@ import {
   IconPulse,
   IconRefresh,
   IconSetting,
-  IconTreeTriangleDown
+  IconTreeTriangleDown,
+  IconFolderOpen
 } from "@douyinfe/semi-icons";
 
 const { Title, Text, Paragraph } = Typography;
@@ -37,6 +38,7 @@ const { Title, Text, Paragraph } = Typography;
 const NAV_ITEMS = [
   { key: "status", label: "Status", icon: <IconPulse />, hint: "Current repo health and recent activity" },
   { key: "ask", label: "Ask", icon: <IconComment />, hint: "Grounded retrieval workspace" },
+  { key: "skills", label: "Skills", icon: <IconFolderOpen />, hint: "Browse the current knowledge base" },
   { key: "update", label: "Update", icon: <IconArticle />, hint: "Stage content and promote changes" },
   { key: "config", label: "Config", icon: <IconSetting />, hint: "Model and runtime settings" }
 ];
@@ -60,6 +62,7 @@ export function App() {
   const [note, setNote] = useState("");
   const [explain, setExplain] = useState(false);
   const [loadingKey, setLoadingKey] = useState("");
+  const [skillQuery, setSkillQuery] = useState("");
   const [stagingState, setStagingState] = useState({
     loading: true,
     items: [],
@@ -67,10 +70,27 @@ export function App() {
     draftContent: "",
     error: ""
   });
+  const [skillsState, setSkillsState] = useState({
+    loading: true,
+    items: [],
+    selectedSkillId: "",
+    selectedContent: "",
+    error: ""
+  });
 
   useEffect(() => {
     void bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (activeView !== "skills") {
+      return;
+    }
+    if (!skillsState.selectedSkillId || skillsState.selectedContent || skillsState.loading) {
+      return;
+    }
+    void loadSkillContent(skillsState.selectedSkillId);
+  }, [activeView, skillsState.selectedSkillId, skillsState.selectedContent, skillsState.loading]);
 
   const activeItem = useMemo(
     () => NAV_ITEMS.find(item => item.key === activeView) || NAV_ITEMS[0],
@@ -80,7 +100,7 @@ export function App() {
   const parsedReview = useMemo(() => splitReviewOutput(reviewOutput), [reviewOutput]);
 
   async function bootstrap() {
-    await Promise.all([refreshMeta(), refreshStatus(), refreshRuns(), refreshConfig(), refreshStaging()]);
+    await Promise.all([refreshMeta(), refreshStatus(), refreshRuns(), refreshConfig(), refreshStaging(), refreshSkills()]);
   }
 
   async function refreshMeta() {
@@ -178,6 +198,59 @@ export function App() {
         draftContent: "",
         error: error.message
       }));
+    }
+  }
+
+  async function refreshSkills() {
+    setSkillsState(current => ({ ...current, loading: true }));
+    try {
+      const result = await api("/api/skills");
+      if (!result.ok) {
+        throw new Error(result.error || "Failed to load skills.");
+      }
+      setSkillsState(current => {
+        const items = result.items || [];
+        const selectedSkillId = items.some(item => item.skillId === current.selectedSkillId)
+          ? current.selectedSkillId
+          : (items[0]?.skillId || "");
+        return {
+          loading: false,
+          items,
+          selectedSkillId,
+          selectedContent: current.selectedSkillId === selectedSkillId ? current.selectedContent : "",
+          error: ""
+        };
+      });
+    } catch (error) {
+      setSkillsState({
+        loading: false,
+        items: [],
+        selectedSkillId: "",
+        selectedContent: "",
+        error: error.message
+      });
+    }
+  }
+
+  async function loadSkillContent(skillId) {
+    if (!skillId) {
+      return;
+    }
+    setLoadingKey("skills-content");
+    try {
+      const result = await api(`/api/skills/content?skillId=${encodeURIComponent(skillId)}`);
+      if (!result.ok) {
+        throw new Error(result.error || "Failed to load skill content.");
+      }
+      setSkillsState(current => ({
+        ...current,
+        selectedSkillId: skillId,
+        selectedContent: result.content || ""
+      }));
+    } catch (error) {
+      Toast.error({ content: error.message });
+    } finally {
+      setLoadingKey("");
     }
   }
 
@@ -471,6 +544,17 @@ export function App() {
           />
         )}
 
+        {activeView === "skills" && (
+          <SkillsView
+            skillsState={skillsState}
+            loadingKey={loadingKey}
+            skillQuery={skillQuery}
+            setSkillQuery={setSkillQuery}
+            onRefresh={() => void refreshSkills()}
+            onSelectSkill={skillId => void loadSkillContent(skillId)}
+          />
+        )}
+
         {activeView === "update" && (
           <UpdateView
             note={note}
@@ -584,6 +668,138 @@ function AskView({ question, setQuestion, explain, setExplain, askOutput, loadin
         </div>
         <OutputBlock value={askOutput} tall />
       </Space>
+    </Card>
+  );
+}
+
+function SkillsView({ skillsState, loadingKey, skillQuery, setSkillQuery, onRefresh, onSelectSkill }) {
+  const filteredItems = useMemo(() => {
+    const query = skillQuery.trim().toLowerCase();
+    if (!query) {
+      return skillsState.items;
+    }
+    return skillsState.items.filter(item => {
+      const haystack = `${item.skillId} ${item.title} ${item.summary} ${(item.categoryPaths || []).join(" ")}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [skillQuery, skillsState.items]);
+
+  const selectedSkill = filteredItems.find(item => item.skillId === skillsState.selectedSkillId)
+    || skillsState.items.find(item => item.skillId === skillsState.selectedSkillId)
+    || null;
+
+  return (
+    <Card
+      className="console-card"
+      title={<SectionTitle icon={<IconFolderOpen />} title="Browse skills" subtitle="Inspect the current knowledge base by title, summary, category paths, and full markdown content" />}
+    >
+      <div className="skills-workspace">
+        <div className="skills-sidebar">
+          <div className="skills-toolbar">
+            <Input
+              value={skillQuery}
+              onChange={setSkillQuery}
+              placeholder="Search skill title, summary, category, or skill id..."
+            />
+            <div className="row-actions">
+              <Text type="tertiary">{filteredItems.length} visible of {skillsState.items.length} total</Text>
+              <Button icon={<IconRefresh />} loading={skillsState.loading} onClick={onRefresh}>
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {skillsState.error ? (
+            <Empty image={null} title="Unable to load skills" description={skillsState.error} />
+          ) : skillsState.loading ? (
+            <div className="loading-block compact-loading">
+              <Spin />
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <Empty image={null} title="No matching skills" description="Try a broader search, or add new material through Update first." />
+          ) : (
+            <div className="skill-list-items">
+              {filteredItems.map(item => (
+                <button
+                  key={item.skillId}
+                  type="button"
+                  className={`stage-item${item.skillId === skillsState.selectedSkillId ? " stage-item-active" : ""}`}
+                  onClick={() => onSelectSkill(item.skillId)}
+                >
+                  <div className="stage-item-topline">
+                    <Text strong>{item.title}</Text>
+                    <Tag size="small" color="grey">{item.categoryPaths?.length || 0} paths</Tag>
+                  </div>
+                  <Text type="tertiary" className="stage-item-preview">
+                    {item.summary || "No summary."}
+                  </Text>
+                  <Text type="quaternary" className="skill-meta-line">
+                    {item.skillId}
+                  </Text>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="skills-detail">
+          {selectedSkill ? (
+            <div className="page-stack no-top-gap">
+              <Card className="console-card" bodyStyle={{ padding: 20 }}>
+                <div className="skills-detail-header">
+                  <div className="skills-detail-title">
+                    <Title heading={5} className="brand-title">{selectedSkill.title}</Title>
+                    <Text type="tertiary">{selectedSkill.skillId}</Text>
+                  </div>
+                  <Tag color="white">updated {selectedSkill.updatedAt || "unknown"}</Tag>
+                </div>
+                <div className="skills-meta-grid">
+                  <div className="skills-meta-block">
+                    <Text strong>Summary</Text>
+                    <Paragraph className="skill-summary-copy">{selectedSkill.summary || "No summary."}</Paragraph>
+                  </div>
+                  <div className="skills-meta-block">
+                    <Text strong>Category paths</Text>
+                    <div className="skill-path-tags">
+                      {(selectedSkill.categoryPaths?.length ? selectedSkill.categoryPaths : ["(unlinked)"]).map(pathValue => (
+                        <Tag key={pathValue} color="light-blue">{pathValue}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card
+                className="console-card"
+                title={<SectionTitle icon={<IconArticle />} title="Markdown content" subtitle="Read the full skill body exactly as stored in the knowledge base" />}
+              >
+                <div className="editor-shell">
+                  <Editor
+                    height="540px"
+                    defaultLanguage="markdown"
+                    language="markdown"
+                    value={skillsState.selectedContent || "Loading content..."}
+                    options={{
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      fontSize: 13,
+                      wordWrap: "on",
+                      lineNumbers: "on",
+                      renderLineHighlight: "all",
+                      folding: true,
+                      glyphMargin: false
+                    }}
+                    theme="vs-dark"
+                  />
+                </div>
+              </Card>
+            </div>
+          ) : (
+            <Empty image={null} title="No skill selected" description="Choose a skill from the list to inspect its metadata and content." />
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -1100,6 +1316,8 @@ function pageTitle(activeView) {
       return "Repository status";
     case "ask":
       return "Ask the knowledge base";
+    case "skills":
+      return "Browse skills";
     case "update":
       return "Update workflow";
     case "config":
@@ -1115,6 +1333,8 @@ function pageDescription(activeView) {
       return "A concise but useful view of repo health, model reachability, and recent execution history.";
     case "ask":
       return "Ask a grounded question and optionally inspect the retrieval path, matched skills, and evidence passages.";
+    case "skills":
+      return "Browse every stored skill, inspect its metadata, and open the full markdown body without leaving the GUI.";
     case "update":
       return "First add new material into staging, then apply, review, and merge the resulting branch changes from the same page.";
     case "config":

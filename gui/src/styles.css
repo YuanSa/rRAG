@@ -264,7 +264,15 @@ body {
   gap: 20px;
 }
 
+.skills-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 20px;
+}
+
 .stage-sidebar,
+.skills-sidebar,
+.skills-detail,
 .stage-detail,
 .stage-compose,
 .stage-list,
@@ -278,6 +286,11 @@ body {
   align-content: start;
 }
 
+.skills-sidebar {
+  align-content: start;
+  min-height: 0;
+}
+
 .stage-compose {
   padding: 18px;
   border-radius: 20px;
@@ -289,7 +302,17 @@ body {
   min-height: 0;
 }
 
+.skills-toolbar {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(52, 111, 167, 0.06);
+  border: 1px solid rgba(52, 111, 167, 0.12);
+}
+
 .stage-list-header,
+.skills-detail-header,
 .stage-detail-header,
 .stage-preview-header {
   display: flex;
@@ -302,6 +325,14 @@ body {
   display: grid;
   gap: 10px;
   max-height: 540px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.skill-list-items {
+  display: grid;
+  gap: 10px;
+  max-height: 720px;
   overflow: auto;
   padding-right: 2px;
 }
@@ -346,7 +377,16 @@ body {
   -webkit-line-clamp: 3;
 }
 
+.skill-meta-line {
+  font-size: 11px;
+  word-break: break-all;
+}
+
 .stage-detail {
+  min-width: 0;
+}
+
+.skills-detail {
   min-width: 0;
 }
 
@@ -380,6 +420,38 @@ body {
 
 .compact-loading {
   min-height: 140px;
+}
+
+.no-top-gap {
+  margin-top: 0;
+}
+
+.skills-detail-title {
+  display: grid;
+  gap: 6px;
+}
+
+.skills-meta-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.skills-meta-block {
+  display: grid;
+  gap: 8px;
+}
+
+.skill-summary-copy {
+  margin: 0 !important;
+  color: #445363;
+  line-height: 1.7;
+}
+
+.skill-path-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .review-shell {
@@ -449,11 +521,16 @@ body {
   }
 
   .update-workspace,
+  .skills-workspace,
   .stage-detail-body {
     grid-template-columns: 1fr;
   }
 
   .stage-list-items {
+    max-height: none;
+  }
+
+  .skill-list-items {
     max-height: none;
   }
 }

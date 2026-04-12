@@ -332,7 +332,13 @@ function deriveTitle(staged) {
 
 function deriveSummary(text) {
   const normalized = text.replace(/\s+/g, " ").trim();
-  return normalized.length <= 160 ? normalized : `${normalized.slice(0, 157)}...`;
+  const lead = normalized.length <= 110 ? normalized : `${normalized.slice(0, 107)}...`;
+  const keywords = extractSummaryKeywords(text);
+  if (keywords.length === 0) {
+    return lead;
+  }
+  const summary = `${lead} Keywords: ${keywords.join(", ")}`;
+  return summary.length <= 220 ? summary : `${summary.slice(0, 217)}...`;
 }
 
 function appendUpdateSection(existingContent, relativePath, newBody) {
@@ -376,6 +382,55 @@ function tokenize(text) {
     .map(token => token.trim())
     .filter(token => token.length >= 2);
 }
+
+function extractSummaryKeywords(text) {
+  const counts = new Map();
+  for (const token of tokenize(text)) {
+    if (STOP_TOKENS.has(token) || token.length < 4) {
+      continue;
+    }
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))
+    .slice(0, 5)
+    .map(([token]) => token);
+}
+
+const STOP_TOKENS = new Set([
+  "about",
+  "after",
+  "also",
+  "because",
+  "before",
+  "being",
+  "between",
+  "into",
+  "just",
+  "more",
+  "most",
+  "note",
+  "should",
+  "some",
+  "than",
+  "that",
+  "their",
+  "there",
+  "these",
+  "this",
+  "those",
+  "through",
+  "update",
+  "using",
+  "with",
+  "from",
+  "have",
+  "when",
+  "where",
+  "which",
+  "will",
+  "would"
+]);
 
 function createPlanItem(action, text, data) {
   return {

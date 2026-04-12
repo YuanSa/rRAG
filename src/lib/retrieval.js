@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { selectBranchesWithFallback } from "./branch-selector.js";
 import { readSkillContent, readSkillMeta } from "./fs-api.js";
+import { collectSkillSummaries } from "./skill-discovery.js";
 
 export async function collectCategoryLinks(categoriesRoot) {
   const links = [];
@@ -90,14 +91,37 @@ export async function retrieveRelevantPassages({
     }
   }
 
+  const summaryBypassCandidates = await collectSummaryBypassCandidates({
+    skillsRoot,
+    skillCategoryMap,
+    questionTokens,
+    limit: Math.max(maxSkills * 2, 10)
+  });
+  for (const candidate of summaryBypassCandidates) {
+    const existing = candidateSkillMap.get(candidate.skillId);
+    if (existing) {
+      existing.summaryBypass = true;
+      continue;
+    }
+    candidateSkillMap.set(candidate.skillId, {
+      skillId: candidate.skillId,
+      traversalPaths: [],
+      summaryBypass: true
+    });
+  }
+
   const candidates = [];
   for (const candidateBase of candidateSkillMap.values()) {
     const skillId = candidateBase.skillId;
     const meta = await readSkillMeta(skillsRoot, skillId);
     const categoryPaths = [...new Set(skillCategoryMap.get(skillId) ?? [])].filter(Boolean);
     const traversalPaths = [...new Set(candidateBase.traversalPaths)].filter(Boolean);
-    const summaryText = `${meta.title} ${meta.summary} ${categoryPaths.join(" ")} ${traversalPaths.join(" ")}`;
-    const score = scoreText(questionTokens, summaryText);
+    const score = scoreSkillCandidate(questionTokens, {
+      title: meta.title,
+      summary: meta.summary,
+      categoryPaths,
+      traversalPaths
+    });
     candidates.push({
       skillId,
       title: meta.title,
@@ -137,6 +161,27 @@ export async function retrieveRelevantPassages({
     }
     return combinedScore >= Math.max(3, bestOverallScore - 4);
   });
+}
+
+async function collectSummaryBypassCandidates({ skillsRoot, skillCategoryMap, questionTokens, limit }) {
+  const summaries = await collectSkillSummaries(skillsRoot);
+  return summaries
+    .map(skill => {
+      const categoryPaths = [...new Set(skillCategoryMap.get(skill.id) ?? [])].filter(Boolean);
+      const score = scoreSkillCandidate(questionTokens, {
+        title: skill.title,
+        summary: skill.summary,
+        categoryPaths,
+        traversalPaths: []
+      });
+      return {
+        skillId: skill.id,
+        score
+      };
+    })
+    .filter(candidate => candidate.score > 0)
+    .sort((a, b) => b.score - a.score || a.skillId.localeCompare(b.skillId))
+    .slice(0, limit);
 }
 
 export async function traverseCategories({
@@ -337,6 +382,25 @@ function splitIntoSections(content) {
     .split(/\n\s*\n/g)
     .map(section => section.trim())
     .filter(Boolean);
+}
+
+function scoreSkillCandidate(questionTokens, candidate) {
+  const titleScore = scoreText(questionTokens, candidate.title || "");
+  const summaryScore = scoreText(questionTokens, candidate.summary || "");
+  const categoryScore = scoreText(questionTokens, (candidate.categoryPaths || []).join(" "));
+  const traversalScore = scoreText(questionTokens, (candidate.traversalPaths || []).join(" "));
+  const uniqueQuestionTokens = [...new Set(questionTokens)];
+  const coverageTokens = new Set(
+    tokenize([
+      candidate.title || "",
+      candidate.summary || "",
+      ...(candidate.categoryPaths || []),
+      ...(candidate.traversalPaths || [])
+    ].join(" "))
+  );
+  const overlapCount = uniqueQuestionTokens.filter(token => coverageTokens.has(token)).length;
+  const coverageBoost = uniqueQuestionTokens.length > 0 ? overlapCount / uniqueQuestionTokens.length : 0;
+  return Math.round((titleScore * 1.8 + summaryScore * 1.5 + categoryScore + traversalScore * 0.8 + coverageBoost * 8) * 10) / 10;
 }
 
 function scoreText(questionTokens, text) {

@@ -6,6 +6,9 @@ import { createRepoContext } from "../lib/repo.js";
 import { createCapturedStreams } from "../lib/capture.js";
 import { executeCommand } from "../lib/command-executor.js";
 import { loadConfig, saveConfig } from "../lib/config.js";
+import { collectSkillSummaries } from "../lib/skill-discovery.js";
+import { collectSkillCategoryMap } from "../lib/retrieval.js";
+import { readSkillContent } from "../lib/fs-api.js";
 import {
   addTextToStaging,
   collectStagingTexts,
@@ -114,6 +117,38 @@ async function routeRequest({ request, response, context }) {
       await sendJson(response, 200, {
         ok: true,
         config
+      });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/skills") {
+      const commandContext = await buildCommandContext(context);
+      const summaries = await collectSkillSummaries(commandContext.paths.skills);
+      const categoryMap = await collectSkillCategoryMap(commandContext.paths.categories);
+      await sendJson(response, 200, {
+        ok: true,
+        items: summaries.map(item => ({
+          skillId: item.id,
+          title: item.title,
+          summary: item.summary,
+          updatedAt: item.updated_at,
+          categoryPaths: [...new Set(categoryMap.get(item.id) ?? [])].filter(Boolean)
+        }))
+      });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/skills/content") {
+      const commandContext = await buildCommandContext(context);
+      const skillId = String(url.searchParams.get("skillId") || "").trim();
+      if (!skillId) {
+        throw new Error("skillId is required");
+      }
+      const content = await readSkillContent(commandContext.paths.skills, skillId);
+      await sendJson(response, 200, {
+        ok: true,
+        skillId,
+        content
       });
       return;
     }

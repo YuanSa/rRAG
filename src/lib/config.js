@@ -2,13 +2,13 @@ import { readFile, writeFile } from "node:fs/promises";
 
 export const DEFAULT_CONFIG = {
   max_branches: 10,
-  max_depth: 5,
-  max_total_nodes: 50,
-  branch_max_per_level: 3,
+  max_depth: 7,
+  max_total_nodes: 120,
+  branch_max_per_level: 5,
   branch_min_score: 1,
-  branch_score_margin: 3,
+  branch_score_margin: 5,
   max_full_skill_reads: 12,
-  max_passages_per_skill: 5,
+  max_passages_per_skill: 8,
   staging_max_file_size: 262144,
   staging_max_total_files: 500,
   runs_enabled: true,
