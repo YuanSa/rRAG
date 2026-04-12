@@ -258,6 +258,130 @@ body {
   min-height: 320px;
 }
 
+.update-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.stage-sidebar,
+.stage-detail,
+.stage-compose,
+.stage-list,
+.stage-detail-body,
+.stage-preview {
+  display: grid;
+  gap: 14px;
+}
+
+.stage-sidebar {
+  align-content: start;
+}
+
+.stage-compose {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(177, 79, 45, 0.06);
+  border: 1px solid rgba(177, 79, 45, 0.12);
+}
+
+.stage-list {
+  min-height: 0;
+}
+
+.stage-list-header,
+.stage-detail-header,
+.stage-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stage-list-items {
+  display: grid;
+  gap: 10px;
+  max-height: 540px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.stage-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(22, 35, 48, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.stage-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(177, 79, 45, 0.18);
+  box-shadow: 0 10px 24px rgba(37, 47, 59, 0.08);
+}
+
+.stage-item-active {
+  border-color: rgba(177, 79, 45, 0.28);
+  background: linear-gradient(180deg, rgba(255, 246, 240, 0.98), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 12px 28px rgba(177, 79, 45, 0.1);
+}
+
+.stage-item-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stage-item-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.stage-detail {
+  min-width: 0;
+}
+
+.stage-detail-body {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.stage-editor .semi-input-textarea {
+  min-height: 460px !important;
+  font-family: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+
+.stage-preview {
+  min-width: 0;
+}
+
+.stage-preview-block {
+  min-height: 460px;
+  margin: 0;
+  padding: 16px 18px;
+  overflow: auto;
+  border-radius: 18px;
+  background: rgba(21, 30, 41, 0.96);
+  color: #eaf2ff;
+  font-size: 13px;
+  line-height: 1.65;
+  font-family: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+.compact-loading {
+  min-height: 140px;
+}
+
 .review-shell {
   display: grid;
   gap: 12px;
@@ -322,6 +446,15 @@ body {
 
   .nav-section {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .update-workspace,
+  .stage-detail-body {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-list-items {
+    max-height: none;
   }
 }
 

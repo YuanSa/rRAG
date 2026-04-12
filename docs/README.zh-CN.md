@@ -40,6 +40,18 @@ rrag init
 
 `init` 会引导你配置模型相关信息。支持使用本地 Ollama 模型。
 
+如果你想把 `~/.rrag` 这个知识库仓库同步到远程 Git 仓库，并在 `update --apply` 时自动推送分支、创建 PR / MR，也可以继续配置：
+
+```bash
+rrag config set remote_git_enabled true
+rrag config set remote_git_provider github
+rrag config set remote_git_remote origin
+rrag config set remote_git_repo_url git@github.com:YOUR_NAME/YOUR_REPO.git
+rrag config set remote_git_token_env GITHUB_TOKEN
+```
+
+如果使用 GitLab，把 `remote_git_provider` 改成 `gitlab`，token 环境变量改成 `GITLAB_TOKEN` 即可。
+
 ### 2. 功能体验
 
 我们先问 `rrag` 一个问题：
@@ -74,6 +86,13 @@ rrag ask "How should traversal branch budgets be controlled?"
 
 `rrag update` 支持多次添加内容、还支持 `--file <file_path>` 直接导入一个文件的内容作为新知识。
 
+如果你开启了远程 git 工作流，那么 `rrag update --apply` 在本地完成 commit 后，还会自动：
+
+- 把当前 `update/...` 分支 push 到远程
+- 尝试创建 GitHub Pull Request 或 GitLab Merge Request
+
+此时就**不再使用** `rrag update --merge`，而是直接在远程平台完成 review 和 merge。
+
 ## 典型使用场景
 
 ### 1. 记住一条小知识
@@ -105,7 +124,30 @@ rrag update --review
 rrag update --merge
 ```
 
-### 4. 正常提问，只看答案
+### 4. 使用远程 GitHub / GitLab 审查知识变更
+
+如果你的知识库需要团队协作，或者希望让每次知识更新都进入远程代码审查流程：
+
+```bash
+rrag config set remote_git_enabled true
+rrag config set remote_git_provider github
+rrag config set remote_git_repo_url git@github.com:YOUR_NAME/YOUR_REPO.git
+rrag config set remote_git_token_env GITHUB_TOKEN
+
+rrag update "Beam search should keep traversal branch budgets small."
+rrag update --apply
+```
+
+在这种模式下，`rrag update --apply` 会：
+
+- 在本地 data repo 创建 / 复用 `update/...` 分支
+- 执行知识更新并 commit
+- push 当前分支到远程
+- 自动创建 PR / MR，或者在无法自动创建时给出可继续操作的提示
+
+注意：远程模式下不应再使用 `rrag update --merge`，应该在远程平台完成最终 merge。
+
+### 5. 正常提问，只看答案
 
 日常使用时，`ask` 默认只输出最终答案：
 
@@ -113,7 +155,7 @@ rrag update --merge
 rrag ask "What does the repo know about traversal?"
 ```
 
-### 5. 调试召回过程
+### 6. 调试召回过程
 
 如果你想看分类路径、命中 skill 和证据片段，可以在 `ask` 时添加 `--explain` 参数：
 
@@ -121,7 +163,7 @@ rrag ask "What does the repo know about traversal?"
 rrag ask --explain "What does the repo know about traversal?"
 ```
 
-### 6. 查看和维护知识库状态
+### 7. 查看和维护知识库状态
 
 查看整体状态：
 
@@ -143,7 +185,7 @@ rrag rebuild --dry-run
 rrag rebuild
 ```
 
-### 7. 使用本地 Web 控制台
+### 8. 使用本地 Web 控制台
 
 如果你希望在浏览器里完成 `ask`、`update`、`review`、`merge`、`status`、`runs` 等操作，`rrag` 也提供了一个基于 React + Semi Design 的本地控制台：
 
@@ -153,13 +195,13 @@ rrag gui
 
 它会启动一个本地 GUI 控制台，默认地址通常是 `http://127.0.0.1:4317`。
 
-### 8. 清理缓存和临时产物
+### 9. 清理缓存和临时产物
 
 ```bash
 rrag clear
 ```
 
-### 9. 软删除一个 skill
+### 10. 软删除一个 skill
 
 ```bash
 rrag delete <skill_id>
@@ -200,6 +242,12 @@ RRAG_HOME=~/.rrag-demo rrag status
 | `llm_base_url` | 指定模型服务地址。 | `http://127.0.0.1:11434` / `http://127.0.0.1:8080/v1` |
 | `llm_model` | 指定实际使用的模型名。 | `qwen2.5:7b` / `gpt-4.1-mini` |
 | `llm_api_key_env` | 指定从哪个环境变量读取 API key。本地 Ollama 一般不会真的用到，但可以保留。 | `OPENAI_API_KEY` |
+| `remote_git_enabled` | 是否启用远程知识库工作流。打开后，`update --apply` 会在本地 commit 后继续 push 更新分支，并尝试创建远程 PR / MR。 | `true` / `false` |
+| `remote_git_provider` | 远程 Git 平台类型。`auto` 会根据仓库 URL 自动判断；也可以手动指定。 | `auto` / `github` / `gitlab` |
+| `remote_git_remote` | 本地 data repo 使用的远程名称。通常是 `origin`。 | `origin` |
+| `remote_git_repo_url` | 远程知识库仓库地址。如果设置了，rrag 会在 push 前自动添加或更新 remote。 | `git@github.com:YOUR_NAME/YOUR_REPO.git` |
+| `remote_git_api_base_url` | 远程平台 API 基地址。适合 GitHub Enterprise 或自建 GitLab。 | `https://github.example.com/api/v3` |
+| `remote_git_token_env` | 用于创建远程 PR / MR 的 token 环境变量名。留空则只 push，不自动创建 review。 | `GITHUB_TOKEN` / `GITLAB_TOKEN` |
 | `runs_enabled` | 是否记录运行过程到 `runs/`。打开后更方便调试和回看 planner / ask 过程；关闭后更干净。 | `true` / `false` |
 | `archive_enabled` | 是否在 `update --apply` 后把消费过的 `staging/` 输入归档到 `archive/`。 | `true` / `false` |
 | `ask_no_answer_behavior` | 控制 `ask` 在没有匹配到 skill，或无法得出最终答案时的行为。 | `error` / `reply` / `empty` |
@@ -214,9 +262,9 @@ RRAG_HOME=~/.rrag-demo rrag status
 | `rrag init` | 交互式初始化模型连接配置。 | 第一次使用、切换模型服务 |
 | `rrag update "<text>"` | 把一段文本加入 `staging/`。 | 快速记住一条事实或笔记 |
 | `rrag update --file <path>` | 把文件或目录复制到 `staging/`。 | 从现有文档、笔记目录学习 |
-| `rrag update --apply` | 执行学习，把 `staging/` 的内容整理进知识库。 | 完成一次知识更新 |
+| `rrag update --apply` | 执行学习，把 `staging/` 的内容整理进知识库。远程模式下还会 push 分支并尝试创建 PR / MR。 | 完成一次知识更新 |
 | `rrag update --review` | 查看当前 update 分支相对 `main` 的 diff。 | 合并前检查本次知识变更 |
-| `rrag update --merge` | 把当前 update 分支合并回 `main`。 | 确认无误后正式落库 |
+| `rrag update --merge` | 把当前 update 分支合并回 `main`。仅适用于本地工作流；远程模式下应在 PR / MR 中合并。 | 确认无误后正式落库 |
 | `rrag ask "<question>"` | 提问，只输出最终答案。 | 日常使用 |
 | `rrag ask --explain "<question>"` | 提问并输出检索解释、命中 skill 和证据片段。 | 调试召回过程 |
 | `rrag gui` | 启动基于 React + Semi Design 的本地浏览器控制台，集中完成 `ask`、`update`、`review`、`merge`、`status`、`runs`。 | 偏可视化的日常操作 |

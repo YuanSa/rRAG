@@ -93,6 +93,31 @@ export async function checkoutBranch(cwd, branchName) {
   await execGit(cwd, ["checkout", branchName]);
 }
 
+export async function getRemoteUrl(cwd, remoteName) {
+  try {
+    const { stdout } = await execGit(cwd, ["remote", "get-url", remoteName]);
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+}
+
+export async function ensureRemote(cwd, remoteName, remoteUrl) {
+  const existing = await getRemoteUrl(cwd, remoteName);
+  if (existing) {
+    if (remoteUrl && existing !== remoteUrl) {
+      await execGit(cwd, ["remote", "set-url", remoteName, remoteUrl]);
+      return remoteUrl;
+    }
+    return existing;
+  }
+  if (!remoteUrl) {
+    throw new Error(`git remote "${remoteName}" is not configured`);
+  }
+  await execGit(cwd, ["remote", "add", remoteName, remoteUrl]);
+  return remoteUrl;
+}
+
 export async function stageAll(cwd) {
   await execGit(cwd, ["add", "."]);
 }
@@ -113,6 +138,10 @@ export async function hasTrackedChanges(cwd) {
 export async function diffAgainstMain(cwd) {
   const { stdout } = await execGit(cwd, ["diff", `${DEFAULT_BRANCH}...HEAD`]);
   return stdout;
+}
+
+export async function pushBranch(cwd, remoteName, branchName) {
+  await execGit(cwd, ["push", "-u", remoteName, branchName]);
 }
 
 export async function mergeCurrentBranchIntoMain(cwd, branchName) {

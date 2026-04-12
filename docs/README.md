@@ -48,6 +48,18 @@ rrag init
 
 `init` is interactive. It guides you through the model connection setup and supports local Ollama.
 
+If you want the `~/.rrag` knowledge repository to sync with a remote git repository, and you want `update --apply` to push branches and open PRs / MRs automatically, you can continue with:
+
+```bash
+rrag config set remote_git_enabled true
+rrag config set remote_git_provider github
+rrag config set remote_git_remote origin
+rrag config set remote_git_repo_url git@github.com:YOUR_NAME/YOUR_REPO.git
+rrag config set remote_git_token_env GITHUB_TOKEN
+```
+
+For GitLab, set `remote_git_provider` to `gitlab` and use `GITLAB_TOKEN` instead.
+
 ### 2. Try the core workflow
 
 First, ask a question:
@@ -86,6 +98,13 @@ At this point, `rrag` should be able to answer it.
 
 `rrag update` can be used multiple times before `--apply`, and it also supports importing files directly with `--file <file_path>`.
 
+If remote git workflow is enabled, `rrag update --apply` will also:
+
+- push the current `update/...` branch to the remote
+- try to create a GitHub pull request or GitLab merge request
+
+In that mode, you should **not** use `rrag update --merge`; instead, finish review and merge on the remote platform.
+
 ## Typical Use Cases
 
 ### 1. Learn a quick fact
@@ -117,7 +136,30 @@ rrag update --review
 rrag update --merge
 ```
 
-### 4. Ask for just the answer
+### 4. Review knowledge changes through GitHub or GitLab
+
+If your knowledge base is collaborative, or you want every knowledge update to go through a remote review workflow:
+
+```bash
+rrag config set remote_git_enabled true
+rrag config set remote_git_provider github
+rrag config set remote_git_repo_url git@github.com:YOUR_NAME/YOUR_REPO.git
+rrag config set remote_git_token_env GITHUB_TOKEN
+
+rrag update "Beam search should keep traversal branch budgets small."
+rrag update --apply
+```
+
+In this mode, `rrag update --apply` will:
+
+- create or reuse a local `update/...` branch in the data repo
+- perform the knowledge update and commit it
+- push the current branch to the remote
+- create a PR / MR automatically when possible, or print a helpful next step otherwise
+
+Note: when remote mode is enabled, `rrag update --merge` is no longer the final step. Merge the PR / MR on the remote platform instead.
+
+### 5. Ask for just the answer
 
 For a normal CLI experience, `ask` prints only the final answer:
 
@@ -125,7 +167,7 @@ For a normal CLI experience, `ask` prints only the final answer:
 rrag ask "What does the repo know about traversal?"
 ```
 
-### 5. Debug how retrieval worked
+### 6. Debug how retrieval worked
 
 If you want traversal details, matched skills, and evidence passages:
 
@@ -133,7 +175,7 @@ If you want traversal details, matched skills, and evidence passages:
 rrag ask --explain "What does the repo know about traversal?"
 ```
 
-### 6. Clean up or inspect the knowledge base
+### 7. Clean up or inspect the knowledge base
 
 View current status:
 
@@ -155,7 +197,7 @@ rrag rebuild --dry-run
 rrag rebuild
 ```
 
-### 7. Use the local web console
+### 8. Use the local web console
 
 If you prefer a browser-based control room for `ask`, `update`, `review`, `merge`, `status`, and `runs`, `rrag` also ships with a React GUI built with Semi Design:
 
@@ -165,13 +207,13 @@ rrag gui
 
 This starts a local GUI console, usually at `http://127.0.0.1:4317`.
 
-### 8. Clear local cache and temporary artifacts
+### 9. Clear local cache and temporary artifacts
 
 ```bash
 rrag clear
 ```
 
-### 9. Soft-delete a skill
+### 10. Soft-delete a skill
 
 ```bash
 rrag delete <skill_id>
@@ -212,6 +254,12 @@ This directory is initialized as its own git repository, separate from the sourc
 | `llm_base_url` | The endpoint for the model service. | `http://127.0.0.1:11434` / `http://127.0.0.1:8080/v1` |
 | `llm_model` | The actual model name to use. | `qwen2.5:7b` / `gpt-4.1-mini` |
 | `llm_api_key_env` | The environment variable used to read the API key. For local Ollama this usually remains unused, but it can still stay configured. | `OPENAI_API_KEY` |
+| `remote_git_enabled` | Whether to enable remote knowledge-repo workflow. When enabled, `update --apply` will push the update branch and attempt to create a remote PR / MR after committing locally. | `true` / `false` |
+| `remote_git_provider` | The remote git platform type. `auto` will infer it from the repository URL; you can also pin it explicitly. | `auto` / `github` / `gitlab` |
+| `remote_git_remote` | The git remote name used by the local data repo. Usually `origin`. | `origin` |
+| `remote_git_repo_url` | The remote repository URL for the knowledge repo. If set, rrag will add or update the remote before pushing. | `git@github.com:YOUR_NAME/YOUR_REPO.git` |
+| `remote_git_api_base_url` | Optional remote API base URL for GitHub Enterprise or self-hosted GitLab. | `https://github.example.com/api/v3` |
+| `remote_git_token_env` | The environment variable that stores the token used to create a remote PR / MR. Leave it empty to push only, without automatic review creation. | `GITHUB_TOKEN` / `GITLAB_TOKEN` |
 | `runs_enabled` | Whether to record execution traces under `runs/`. Enable it for observability and debugging; disable it for a cleaner data directory. | `true` / `false` |
 | `archive_enabled` | Whether `update --apply` should archive consumed `staging/` input into `archive/`. | `true` / `false` |
 | `ask_no_answer_behavior` | Controls what `ask` does when no skill matches, or when no grounded answer can be derived. | `error` / `reply` / `empty` |
@@ -226,9 +274,9 @@ This directory is initialized as its own git repository, separate from the sourc
 | `rrag init` | Interactively initialize model connection settings. | First-time setup, switching model backends |
 | `rrag update "<text>"` | Add a text note into `staging/`. | Teaching one small fact or note |
 | `rrag update --file <path>` | Copy a file or directory into `staging/`. | Learning from existing docs or note folders |
-| `rrag update --apply` | Apply staged input into the knowledge base. | Finish a knowledge update |
+| `rrag update --apply` | Apply staged input into the knowledge base. In remote mode, it also pushes the branch and tries to open a PR / MR. | Finish a knowledge update |
 | `rrag update --review` | Show the current update branch diff against `main`. | Review changes before merging |
-| `rrag update --merge` | Merge the current update branch back into `main`. | Finalize a reviewed update |
+| `rrag update --merge` | Merge the current update branch back into `main`. Only for local workflow; in remote mode you merge the PR / MR instead. | Finalize a reviewed update |
 | `rrag ask "<question>"` | Ask a question and print only the final answer. | Normal daily usage |
 | `rrag ask --explain "<question>"` | Ask a question and include retrieval explanation, matched skills, and evidence passages. | Debug retrieval behavior |
 | `rrag gui` | Start the local React + Semi browser console for `ask`, `update`, `review`, `merge`, `status`, and `runs`. | Web-based daily operation |

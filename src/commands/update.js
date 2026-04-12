@@ -22,16 +22,19 @@ import {
   createUpdateBranchName,
   createBranchFromMain,
   diffAgainstMain,
+  ensureRemote,
   getCurrentBranch,
   getGitStatus,
   getHeadCommit,
   hasTrackedChanges,
   isGitRepo,
   mergeCurrentBranchIntoMain,
+  pushBranch,
   stageAll
 } from "../lib/git.js";
 import { buildUpdatePlanWithLlm, buildUpdateReviewWithLlm } from "../lib/planner.js";
 import { executePlan } from "../lib/executor.js";
+import { publishRemoteReview } from "../lib/remote-review.js";
 
 const MAIN_BRANCH = "main";
 
@@ -230,6 +233,14 @@ async function applyUpdate(context) {
   const finalBranch = gitRepo ? await getCurrentBranch(context.paths.root) : "";
   const finalHead = gitRepo ? await getHeadCommit(context.paths.root) : "";
   const finalStatus = gitRepo ? await getGitStatus(context.paths.root) : { ok: false, output: "", error: "" };
+  const remoteReview = gitRepo && context.config.remote_git_enabled
+    ? await publishUpdateBranch({
+        context,
+        runPath,
+        branchName: finalBranch,
+        commitMessage
+      })
+    : null;
 
   if (runPath) {
     await updateRunManifest(runPath, {
@@ -247,7 +258,8 @@ async function applyUpdate(context) {
         head: finalHead,
         status: finalStatus.ok ? finalStatus.output : finalStatus.error,
         committed
-      }
+      },
+      remote_review: remoteReview
     });
 
     await writeSummary(runPath, {
@@ -261,7 +273,9 @@ async function applyUpdate(context) {
       execution_mode: execution.mode,
       planner_mode: plannerMode,
       git_branch: finalBranch,
-      committed
+      committed,
+      remote_review_url: remoteReview?.url || "",
+      remote_review_created: remoteReview?.created ?? false
     });
   }
 
@@ -274,6 +288,12 @@ async function applyUpdate(context) {
   if (gitRepo) {
     context.stdout.write(`Git branch: ${finalBranch || "(detached)"}\n`);
     context.stdout.write(`Committed: ${committed ? "yes" : "no"}\n`);
+    if (remoteReview?.message) {
+      context.stdout.write(`Remote review status: ${remoteReview.message}\n`);
+    }
+    if (remoteReview?.url) {
+      context.stdout.write(`Remote review: ${remoteReview.url}\n`);
+    }
   } else {
     context.stdout.write("Git: not available in the data repository\n");
   }
@@ -314,6 +334,9 @@ async function reviewUpdate(context) {
 }
 
 async function mergeUpdate(context) {
+  if (context.config.remote_git_enabled) {
+    throw new Error("update --merge is disabled when remote git review is enabled; merge the remote pull request or merge request instead");
+  }
   const currentBranch = await getCurrentBranch(context.paths.root);
   if (!currentBranch || currentBranch === MAIN_BRANCH) {
     throw new Error("update --merge requires an active update branch; current branch is main");
@@ -347,6 +370,44 @@ async function ensureUpdateBranch(repoRoot, runId) {
 async function loadCommitMessage(runPath) {
   const raw = await readFile(path.join(runPath, "commit-message.txt"), "utf8");
   return raw.trim();
+}
+
+async function loadPrSummary(runPath) {
+  const raw = await readFile(path.join(runPath, "pr-summary.md"), "utf8");
+  return raw.trim();
+}
+
+async function publishUpdateBranch({ context, runPath, branchName, commitMessage }) {
+  if (!branchName || branchName === MAIN_BRANCH) {
+    return {
+      ok: false,
+      created: false,
+      url: "",
+      message: "Skipping remote publish because no update branch is currently active."
+    };
+  }
+
+  const remoteName = context.config.remote_git_remote || "origin";
+  const remoteUrl = context.config.remote_git_repo_url || "";
+  await ensureRemote(context.paths.root, remoteName, remoteUrl);
+  await pushBranch(context.paths.root, remoteName, branchName);
+
+  const title = firstLine(commitMessage) || `RRAG update ${branchName}`;
+  const body = runPath ? await loadPrSummary(runPath) : `Automated RRAG update for branch \`${branchName}\`.`;
+  return publishRemoteReview({
+    cwd: context.paths.root,
+    config: context.config,
+    branchName,
+    title,
+    body
+  });
+}
+
+function firstLine(value) {
+  return String(value || "")
+    .split("\n")
+    .map(line => line.trim())
+    .find(Boolean) || "";
 }
 
 async function resetStaging(stagingRoot) {

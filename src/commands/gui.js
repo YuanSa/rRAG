@@ -6,6 +6,12 @@ import { createRepoContext } from "../lib/repo.js";
 import { createCapturedStreams } from "../lib/capture.js";
 import { executeCommand } from "../lib/command-executor.js";
 import { loadConfig, saveConfig } from "../lib/config.js";
+import {
+  addTextToStaging,
+  collectStagingTexts,
+  deleteStagingText,
+  updateStagingText
+} from "../lib/staging.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GUI_ROOT = path.resolve(__dirname, "../../gui/dist");
@@ -112,6 +118,21 @@ async function routeRequest({ request, response, context }) {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/staging") {
+      const commandContext = await buildCommandContext(context);
+      const items = await collectStagingTexts(commandContext.paths.staging);
+      await sendJson(response, 200, {
+        ok: true,
+        items: items.map(item => ({
+          relativePath: item.relativePath,
+          content: item.content,
+          preview: item.content.slice(0, 240).trim(),
+          size: item.content.length
+        }))
+      });
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/ask") {
       const body = await readJsonBody(request);
       const args = [];
@@ -126,6 +147,51 @@ async function routeRequest({ request, response, context }) {
     if (request.method === "POST" && url.pathname === "/api/update/note") {
       const body = await readJsonBody(request);
       await runAndRespond(response, context, "update", [String(body?.text || "")]);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/staging") {
+      const body = await readJsonBody(request);
+      const text = String(body?.text || "").trim();
+      if (!text) {
+        throw new Error("staging text is required");
+      }
+      const commandContext = await buildCommandContext(context);
+      const createdPath = await addTextToStaging(commandContext.paths.staging, text);
+      await sendJson(response, 200, {
+        ok: true,
+        relativePath: path.relative(commandContext.paths.staging, createdPath)
+      });
+      return;
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/staging") {
+      const body = await readJsonBody(request);
+      const relativePath = String(body?.relativePath || "");
+      if (!relativePath) {
+        throw new Error("staging relativePath is required");
+      }
+      const commandContext = await buildCommandContext(context);
+      await updateStagingText(commandContext.paths.staging, relativePath, String(body?.content || ""));
+      await sendJson(response, 200, {
+        ok: true,
+        relativePath
+      });
+      return;
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/staging") {
+      const body = await readJsonBody(request);
+      const relativePath = String(body?.relativePath || "");
+      if (!relativePath) {
+        throw new Error("staging relativePath is required");
+      }
+      const commandContext = await buildCommandContext(context);
+      await deleteStagingText(commandContext.paths.staging, relativePath);
+      await sendJson(response, 200, {
+        ok: true,
+        relativePath
+      });
       return;
     }
 

@@ -27,6 +27,12 @@ export async function handleStatus(args, context) {
   context.stdout.write(`- llm provider: ${context.llm.provider}\n`);
   context.stdout.write(`- llm base url: ${context.llm.baseUrl}\n`);
   context.stdout.write(`- llm model: ${context.config.llm_model}\n`);
+  context.stdout.write(`- remote git enabled: ${context.config.remote_git_enabled ? "yes" : "no"}\n`);
+  context.stdout.write(`- remote git provider: ${context.config.remote_git_provider}\n`);
+  context.stdout.write(`- remote git remote: ${context.config.remote_git_remote}\n`);
+  if (context.config.remote_git_repo_url) {
+    context.stdout.write(`- remote git repo url: ${context.config.remote_git_repo_url}\n`);
+  }
 
   if (status.topCategories.length > 0) {
     context.stdout.write("- top categories:\n");

@@ -27,8 +27,10 @@ Notes:
   - update "<text>" appends a text note into staging/
   - update --file copies a file or directory into staging/
   - update --apply creates or reuses an update branch, consumes staging/, and commits data changes
+    - if remote_git_enabled=true, it also pushes the update branch and opens a GitHub pull request or GitLab merge request
   - update --review shows the current branch diff against main in the data repo
   - update --merge merges the current update branch into main in the data repo
+    - disabled when remote_git_enabled=true; merge through the remote review instead
   - ask prints only the final answer by default; add --explain to include retrieval and evidence details
   - ask no-answer behavior is configurable via ask_no_answer_behavior=error|reply|empty
   - gui starts a React + Semi browser console for ask/update/review/merge/status workflows

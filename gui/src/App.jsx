@@ -60,6 +60,13 @@ export function App() {
   const [note, setNote] = useState("");
   const [explain, setExplain] = useState(false);
   const [loadingKey, setLoadingKey] = useState("");
+  const [stagingState, setStagingState] = useState({
+    loading: true,
+    items: [],
+    selectedPath: "",
+    draftContent: "",
+    error: ""
+  });
 
   useEffect(() => {
     void bootstrap();
@@ -73,7 +80,7 @@ export function App() {
   const parsedReview = useMemo(() => splitReviewOutput(reviewOutput), [reviewOutput]);
 
   async function bootstrap() {
-    await Promise.all([refreshMeta(), refreshStatus(), refreshRuns(), refreshConfig()]);
+    await Promise.all([refreshMeta(), refreshStatus(), refreshRuns(), refreshConfig(), refreshStaging()]);
   }
 
   async function refreshMeta() {
@@ -140,6 +147,40 @@ export function App() {
     }
   }
 
+  async function refreshStaging() {
+    setStagingState(current => ({ ...current, loading: true }));
+    try {
+      const result = await api("/api/staging");
+      if (!result.ok) {
+        throw new Error(result.error || "Failed to load staging items.");
+      }
+      setStagingState(current => {
+        const items = result.items || [];
+        const existing = items.find(item => item.relativePath === current.selectedPath);
+        const selectedPath = existing
+          ? existing.relativePath
+          : (items[0]?.relativePath || "");
+        const selectedItem = items.find(item => item.relativePath === selectedPath);
+        return {
+          loading: false,
+          items,
+          selectedPath,
+          draftContent: selectedItem?.content || "",
+          error: ""
+        };
+      });
+    } catch (error) {
+      setStagingState(current => ({
+        ...current,
+        loading: false,
+        items: [],
+        selectedPath: "",
+        draftContent: "",
+        error: error.message
+      }));
+    }
+  }
+
   async function handleAsk() {
     if (!question.trim()) {
       Toast.warning({ content: "Please enter a question first." });
@@ -165,19 +206,76 @@ export function App() {
       Toast.warning({ content: "Please add some note content first." });
       return;
     }
-    await runCommand({
-      key: "update-note",
-      assign: setUpdateOutput,
-      request: () =>
-        api("/api/update/note", {
-          method: "POST",
-          body: { text: note.trim() }
-        }),
-      onSuccess: async () => {
-        setNote("");
-        await refreshStatus();
+    setLoadingKey("update-note");
+    try {
+      const result = await api("/api/staging", {
+        method: "POST",
+        body: { text: note.trim() }
+      });
+      if (!result.ok) {
+        throw new Error(result.error || "Failed to add staging note.");
       }
-    });
+      setNote("");
+      setUpdateOutput(`Added staging note: ${result.relativePath}`);
+      Toast.success({ content: "Added to staging." });
+      await Promise.all([refreshStaging(), refreshStatus()]);
+    } catch (error) {
+      Toast.error({ content: error.message });
+    } finally {
+      setLoadingKey("");
+    }
+  }
+
+  async function handleSaveStagingItem() {
+    if (!stagingState.selectedPath) {
+      Toast.warning({ content: "Select a staging item first." });
+      return;
+    }
+    setLoadingKey("staging-save");
+    try {
+      const result = await api("/api/staging", {
+        method: "PUT",
+        body: {
+          relativePath: stagingState.selectedPath,
+          content: stagingState.draftContent
+        }
+      });
+      if (!result.ok) {
+        throw new Error(result.error || "Failed to save staging item.");
+      }
+      setUpdateOutput(`Saved staging item: ${stagingState.selectedPath}`);
+      Toast.success({ content: "Staging item saved." });
+      await refreshStaging();
+    } catch (error) {
+      Toast.error({ content: error.message });
+    } finally {
+      setLoadingKey("");
+    }
+  }
+
+  async function handleDeleteStagingItem() {
+    if (!stagingState.selectedPath) {
+      Toast.warning({ content: "Select a staging item first." });
+      return;
+    }
+    const target = stagingState.selectedPath;
+    setLoadingKey("staging-delete");
+    try {
+      const result = await api("/api/staging", {
+        method: "DELETE",
+        body: { relativePath: target }
+      });
+      if (!result.ok) {
+        throw new Error(result.error || "Failed to delete staging item.");
+      }
+      setUpdateOutput(`Deleted staging item: ${target}`);
+      Toast.success({ content: "Staging item deleted." });
+      await refreshStaging();
+    } catch (error) {
+      Toast.error({ content: error.message });
+    } finally {
+      setLoadingKey("");
+    }
   }
 
   async function handleApply() {
@@ -186,7 +284,7 @@ export function App() {
       assign: setUpdateOutput,
       request: () => api("/api/update/apply", { method: "POST" }),
       onSuccess: async () => {
-        await Promise.all([refreshStatus(), refreshRuns()]);
+        await Promise.all([refreshStatus(), refreshRuns(), refreshStaging()]);
       }
     });
   }
@@ -206,7 +304,7 @@ export function App() {
       assign: setReviewOutput,
       request: () => api("/api/update/merge", { method: "POST" }),
       onSuccess: async () => {
-        await Promise.all([refreshStatus(), refreshRuns()]);
+        await Promise.all([refreshStatus(), refreshRuns(), refreshStaging()]);
       }
     });
   }
@@ -377,11 +475,26 @@ export function App() {
           <UpdateView
             note={note}
             setNote={setNote}
+            stagingState={stagingState}
             updateOutput={updateOutput}
             reviewOutput={reviewOutput}
             parsedReview={parsedReview}
             loadingKey={loadingKey}
+            onRefreshStaging={() => void refreshStaging()}
+            onSelectStagingItem={relativePath =>
+              setStagingState(current => {
+                const selectedItem = current.items.find(item => item.relativePath === relativePath);
+                return {
+                  ...current,
+                  selectedPath: relativePath,
+                  draftContent: selectedItem?.content || ""
+                };
+              })
+            }
+            onDraftChange={value => setStagingState(current => ({ ...current, draftContent: value }))}
             onStage={() => void handleStageNote()}
+            onSaveStaging={() => void handleSaveStagingItem()}
+            onDeleteStaging={() => void handleDeleteStagingItem()}
             onApply={() => void handleApply()}
             onReview={() => void handleReview()}
             onMerge={() => void handleMerge()}
@@ -478,41 +591,147 @@ function AskView({ question, setQuestion, explain, setExplain, askOutput, loadin
 function UpdateView({
   note,
   setNote,
+  stagingState,
   updateOutput,
   reviewOutput,
   parsedReview,
   loadingKey,
+  onRefreshStaging,
+  onSelectStagingItem,
+  onDraftChange,
   onStage,
+  onSaveStaging,
+  onDeleteStaging,
   onApply,
   onReview,
   onMerge
 }) {
+  const selectedItem = stagingState.items.find(item => item.relativePath === stagingState.selectedPath) || null;
+  const draftDirty = Boolean(selectedItem) && stagingState.draftContent !== selectedItem.content;
+
   return (
     <div className="page-stack">
       <Card
         className="console-card"
-        title={<SectionTitle icon={<IconChecklistStroked />} title="Stage content" subtitle="Collect new raw material into staging before you run the update workflow" />}
+        title={<SectionTitle icon={<IconChecklistStroked />} title="Staging workspace" subtitle="Preview, add, edit, and delete staged material before you promote it into the update workflow" />}
       >
-        <Space vertical align="start" className="full-width" spacing="medium">
-          <TextArea
-            value={note}
-            onChange={setNote}
-            autosize={{ minRows: 8, maxRows: 16 }}
-            placeholder="Paste a note, fact, or short document to stage into rrag..."
-          />
-          <div className="row-actions">
-            <Text type="tertiary">This area is only for adding staging content. You can add several notes before applying them.</Text>
-            <Button type="primary" theme="solid" icon={<IconChecklistStroked />} loading={loadingKey === "update-note"} onClick={onStage}>
-              Add to staging
-            </Button>
+        <div className="update-workspace">
+          <div className="stage-sidebar">
+            <div className="stage-compose">
+              <Text strong>Add new staging note</Text>
+              <Text type="tertiary">Drop raw material here first. You can add several notes, refine them, and only then run apply.</Text>
+              <TextArea
+                value={note}
+                onChange={setNote}
+                autosize={{ minRows: 6, maxRows: 12 }}
+                placeholder="Paste a note, draft, or copied material to stage into rrag..."
+              />
+              <div className="row-actions">
+                <Button icon={<IconRefresh />} loading={stagingState.loading} onClick={onRefreshStaging}>
+                  Refresh list
+                </Button>
+                <Button type="primary" theme="solid" icon={<IconChecklistStroked />} loading={loadingKey === "update-note"} onClick={onStage}>
+                  Add to staging
+                </Button>
+              </div>
+            </div>
+
+            <div className="stage-list">
+              <div className="stage-list-header">
+                <Text strong>Current staging items</Text>
+                <Tag color="white">{stagingState.items.length}</Tag>
+              </div>
+
+              {stagingState.error ? (
+                <Empty image={null} title="Unable to load staging" description={stagingState.error} />
+              ) : stagingState.loading ? (
+                <div className="loading-block compact-loading">
+                  <Spin />
+                </div>
+              ) : stagingState.items.length === 0 ? (
+                <Empty
+                  image={null}
+                  title="Staging is empty"
+                  description="Add a note on the left, or use the CLI to copy files into staging before applying."
+                />
+              ) : (
+                <div className="stage-list-items">
+                  {stagingState.items.map(item => (
+                    <button
+                      key={item.relativePath}
+                      type="button"
+                      className={`stage-item${item.relativePath === stagingState.selectedPath ? " stage-item-active" : ""}`}
+                      onClick={() => onSelectStagingItem(item.relativePath)}
+                    >
+                      <div className="stage-item-topline">
+                        <Text strong>{item.relativePath}</Text>
+                        <Tag size="small" color="grey">{formatBytes(item.size)}</Tag>
+                      </div>
+                      <Text type="tertiary" className="stage-item-preview">
+                        {item.preview || "Empty text file"}
+                      </Text>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <OutputBlock value={updateOutput} />
-        </Space>
+
+          <div className="stage-detail">
+            <div className="stage-detail-header">
+              <div>
+                <Text strong>{selectedItem ? selectedItem.relativePath : "Select a staging item"}</Text>
+                <Text type="tertiary">
+                  {selectedItem
+                    ? "Edit the staged text directly here, then save or delete it before you apply."
+                    : "Choose a staged note from the list to preview and edit it."}
+                </Text>
+              </div>
+              {selectedItem ? (
+                <Space>
+                  <Button disabled={!draftDirty} loading={loadingKey === "staging-save"} onClick={onSaveStaging}>
+                    Save changes
+                  </Button>
+                  <Button type="danger" theme="borderless" loading={loadingKey === "staging-delete"} onClick={onDeleteStaging}>
+                    Delete
+                  </Button>
+                </Space>
+              ) : null}
+            </div>
+
+            {selectedItem ? (
+              <div className="stage-detail-body">
+                <TextArea
+                  value={stagingState.draftContent}
+                  onChange={onDraftChange}
+                  autosize={false}
+                  rows={18}
+                  className="stage-editor"
+                />
+                <div className="stage-preview">
+                  <div className="stage-preview-header">
+                    <Text strong>Preview</Text>
+                    <Tag size="small" color={draftDirty ? "orange" : "green"}>
+                      {draftDirty ? "Unsaved changes" : "Saved"}
+                    </Tag>
+                  </div>
+                  <pre className="stage-preview-block">{stagingState.draftContent || "No content."}</pre>
+                </div>
+              </div>
+            ) : (
+              <Empty
+                image={null}
+                title="No staging item selected"
+                description="Pick an item from the list to inspect it before running apply."
+              />
+            )}
+          </div>
+        </div>
       </Card>
 
       <Card
         className="console-card"
-        title={<SectionTitle icon={<IconBranch />} title="Apply, review, merge" subtitle="Run the branch workflow end to end, then inspect the diff in an editor-style review panel" />}
+        title={<SectionTitle icon={<IconBranch />} title="Apply, review, merge" subtitle="Promote the current staging set onto an update branch, inspect the diff, then merge it back into main" />}
       >
         <Space vertical align="start" className="full-width" spacing="medium">
           <Space wrap>
@@ -528,10 +747,10 @@ function UpdateView({
           </Space>
 
           <Row gutter={[16, 16]} className="full-width">
-            <Col xs={24} xl={9}>
+            <Col xs={24} xl={8}>
               <OutputBlock value={updateOutput} tall />
             </Col>
-            <Col xs={24} xl={15}>
+            <Col xs={24} xl={16}>
               <ReviewPanel reviewOutput={reviewOutput} parsedReview={parsedReview} />
             </Col>
           </Row>
@@ -686,6 +905,62 @@ function ConfigView({ configState, loadingKey, onRefresh, onChange, onSave }) {
               label="Archive staging"
               help="Archive consumed staging inputs instead of clearing them directly."
               control={<Switch checked={Boolean(draft.archive_enabled)} onChange={value => onChange("archive_enabled", value)} />}
+            />
+          </Col>
+        </Row>
+      </Card>
+
+      <Card
+        className="console-card"
+        title={<SectionTitle icon={<IconBranch />} title="Remote git review" subtitle="Optionally publish update branches to a remote and open a pull request or merge request automatically" />}
+      >
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <ConfigField
+              label="Enable remote git publishing"
+              help="When enabled, update --apply will push the update branch and attempt to open a remote review."
+              control={<Switch checked={Boolean(draft.remote_git_enabled)} onChange={value => onChange("remote_git_enabled", value)} />}
+            />
+          </Col>
+          <Col span={24}>
+            <ConfigField
+              label="Remote name"
+              help="Usually origin."
+              control={<Input value={draft.remote_git_remote} onChange={value => onChange("remote_git_remote", value)} />}
+            />
+          </Col>
+          <Col span={24}>
+            <ConfigField
+              label="Remote provider"
+              help="Use auto for host-based detection, or pin github/gitlab explicitly."
+              control={
+                <Select value={draft.remote_git_provider} onChange={value => onChange("remote_git_provider", value)} style={{ width: "100%" }}>
+                  <Select.Option value="auto">auto</Select.Option>
+                  <Select.Option value="github">github</Select.Option>
+                  <Select.Option value="gitlab">gitlab</Select.Option>
+                </Select>
+              }
+            />
+          </Col>
+          <Col span={24}>
+            <ConfigField
+              label="Remote repository URL"
+              help="Optional. If set, rrag will add or update the git remote before pushing."
+              control={<Input value={draft.remote_git_repo_url} onChange={value => onChange("remote_git_repo_url", value)} />}
+            />
+          </Col>
+          <Col span={24}>
+            <ConfigField
+              label="Remote API base URL"
+              help="Optional override for GitHub Enterprise or self-hosted GitLab APIs."
+              control={<Input value={draft.remote_git_api_base_url} onChange={value => onChange("remote_git_api_base_url", value)} />}
+            />
+          </Col>
+          <Col span={24}>
+            <ConfigField
+              label="Remote token env var"
+              help="Optional env var name used to authenticate PR/MR creation, such as GITHUB_TOKEN or GITLAB_TOKEN."
+              control={<Input value={draft.remote_git_token_env} onChange={value => onChange("remote_git_token_env", value)} />}
             />
           </Col>
         </Row>
@@ -893,4 +1168,15 @@ async function api(url, options = {}) {
 function toNumber(raw, fallback) {
   const value = Number(raw);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function formatBytes(size) {
+  const value = Number(size) || 0;
+  if (value < 1024) {
+    return `${value} B`;
+  }
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
