@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -97,8 +97,45 @@ export async function collectStagingTexts(stagingRoot) {
   return files;
 }
 
+export async function updateStagingText(stagingRoot, relativePath, content) {
+  const targetPath = resolveStagingPath(stagingRoot, relativePath);
+  if (!isTextFile(targetPath)) {
+    throw new Error(`staging item is not an editable text file: ${relativePath}`);
+  }
+  await writeFile(targetPath, `${String(content || "").replace(/\s+$/, "")}\n`, "utf8");
+  return targetPath;
+}
+
+export async function deleteStagingText(stagingRoot, relativePath) {
+  const targetPath = resolveStagingPath(stagingRoot, relativePath);
+  await rm(targetPath, { force: true });
+  await pruneEmptyDirectories(path.dirname(targetPath), stagingRoot);
+}
+
 function isTextFile(filePath) {
   return TEXT_FILE_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
+function resolveStagingPath(stagingRoot, relativePath) {
+  const normalizedRoot = path.resolve(stagingRoot);
+  const candidate = path.resolve(normalizedRoot, String(relativePath || ""));
+  if (candidate !== normalizedRoot && !candidate.startsWith(`${normalizedRoot}${path.sep}`)) {
+    throw new Error(`invalid staging path: ${relativePath}`);
+  }
+  return candidate;
+}
+
+async function pruneEmptyDirectories(currentPath, stopPath) {
+  const normalizedStop = path.resolve(stopPath);
+  let cursor = path.resolve(currentPath);
+  while (cursor.startsWith(`${normalizedStop}${path.sep}`)) {
+    const remaining = await readdir(cursor);
+    if (remaining.length > 0) {
+      return;
+    }
+    await rm(cursor, { recursive: true, force: true });
+    cursor = path.dirname(cursor);
+  }
 }
 
 function timestamp() {
